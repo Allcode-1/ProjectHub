@@ -1,0 +1,57 @@
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
+from app.models.project import Project
+from app.models.project_member import ProjectMember, ProjectInviteAccessLevel
+from app.models.user import User
+
+
+def get_project_access(
+    db: Session, user_id: int, project_id: int
+) -> ProjectMember | None:
+
+    return db.scalar(
+        select(ProjectMember).where(
+            ProjectMember.project_id == project_id, ProjectMember.user_id == user_id
+        )
+    )
+
+
+def is_project_owner(user: User, project: Project) -> bool:
+
+    return project.owner_id == user.id
+
+
+def can_view_project(db: Session, user: User, project: Project) -> bool:
+
+    if is_project_owner:
+        return True
+
+    access = get_project_access(db, user.id, project.id)
+
+    return access is not None and access.role in (
+        ProjectInviteAccessLevel.VIEWER,
+        ProjectInviteAccessLevel.WORKER,
+        ProjectInviteAccessLevel.ADMIN,
+    )
+
+
+def can_take_tasks(db: Session, user: User, project: Project) -> bool:
+    if is_project_owner:
+        return True
+
+    access = get_project_access(db, user.id, project.id)
+
+    return access is not None and access.role in (
+        ProjectInviteAccessLevel.WORKER,
+        ProjectInviteAccessLevel.ADMIN,
+    )
+
+
+def can_manage_sprints(db: Session, user: User, project: Project) -> bool:
+    if is_project_owner:
+        return True
+
+    access = get_project_access(db, user.id, project.id)
+
+    return access is not None and access.role in (ProjectInviteAccessLevel.ADMIN)

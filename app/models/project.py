@@ -1,0 +1,37 @@
+from __future__ import annotations
+from typing import TYPE_CHECKING
+
+from datetime import datetime
+
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy import String, ForeignKey, DateTime, func
+
+from app.db.session import Base
+
+if TYPE_CHECKING:
+    from app.models.user import User
+    from app.models.project_member import ProjectMember
+    from app.models.project_invite import ProjectInvite
+
+
+class Project(Base):
+    __tablename__ = "projects"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    owner_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
+    name: Mapped[str] = mapped_column(String(55), nullable=False)
+    description: Mapped[str] = mapped_column(String(255), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    project_members: Mapped[list["ProjectMember"]] = relationship(
+        back_populates="project", cascade="all, delete-orphan"
+    )
+
+    project_invites: Mapped[list["ProjectInvite"]] = relationship(
+        back_populates="project",
+        cascade="all, delete-orphan",
+    )
+
+    owner: Mapped["User"] = relationship(back_populates="projects")
