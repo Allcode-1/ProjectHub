@@ -62,7 +62,7 @@ def login_user(
 
     if not user:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Profile not found"
         )
 
     if not auth_utils.validate_password(password, user.hashed_password):
