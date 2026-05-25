@@ -1,17 +1,19 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
 from app.auth.dependencies import get_current_active_user
-from app.models.project import Project
-from app.models.project_member import ProjectMember
 from app.models.user import User
+from app.models.project import Project
 
 from app.schemas.project import ProjectCreate, ProjectRead, ProjectUpdate
-from app.schemas.project_member import ProjectMemberRead
+from app.auth.schemas import UserRead
 
-from app.services.project_membership import can_view_project
+from app.services.project_membership import can_view_project, can_manage_sprints
+
+from app.repositories.project import ProjectRepository
+
+from app.dependencies.project import get_project_by_id_or_404
 
 
 router = APIRouter()
@@ -24,11 +26,12 @@ def add_project(
     db: Session = Depends(get_db),
 ):
 
-    project = Project(
+    project_repo = ProjectRepository(db)
+
+    project = project_repo.create(
         owner_id=user.id, name=payload.name, description=payload.description
     )
 
-    db.add(project)
     db.commit()
     db.refresh(project)
 
@@ -37,25 +40,20 @@ def add_project(
 
 @router.get("/", response_model=list[ProjectRead])
 def get_projects(
-    user: User = Depends(get_current_active_user)
+    user: User = Depends(get_current_active_user), db: Session = Depends(get_db)
 ):
 
-    return user.projects
+    project_repo = ProjectRepository(db)
+
+    return project_repo.list_accessible_by_user(user.id)
 
 
 @router.get("/{project_id}", response_model=ProjectRead)
 def get_project(
-    project_id: int,
+    project: Project = Depends(get_project_by_id_or_404),
     user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
-
-    project = db.scalar(select(Project).where(Project.id == project_id))
-
-    if project is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Project not found"
-        )
 
     if not can_view_project(db, user, project):
         raise HTTPException(
@@ -67,18 +65,14 @@ def get_project(
 
 @router.delete("/{project_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_project(
-    project_id: int,
+    project: Project = Depends(get_project_by_id_or_404),
     user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
 
-    project = db.scalar(
-        select(Project).where(Project.owner_id == user.id, Project.id == project_id)
-    )
-
-    if project is None:
+    if not can_manage_sprints(db, user, project):
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Project not found"
+            status_code=status.HTTP_403_FORBIDDEN, detail="Can not delete project"
         )
 
     db.delete(project)
@@ -89,19 +83,15 @@ def delete_project(
 
 @router.patch("/{project_id}", response_model=ProjectRead)
 def update_project(
-    project_id: int,
     payload: ProjectUpdate,
+    project: Project = Depends(get_project_by_id_or_404),
     user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
 
-    project = db.scalar(
-        select(Project).where(Project.owner_id == user.id, Project.id == project_id)
-    )
-
-    if project is None:
+    if not can_manage_sprints(db, user, project):
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Project not found"
+            status_code=status.HTTP_403_FORBIDDEN, detail="Can not delete project"
         )
 
     updated_fields = payload.model_dump(exclude_unset=True)
@@ -115,63 +105,20 @@ def update_project(
     return project
 
 
-@router.get("/{project_id}/members", response_model=list[ProjectMemberRead])
+@router.get("/{project_id}/members", response_model=list[UserRead])
 def get_project_members(
-    project_id: int,
+    project: Project = Depends(get_project_by_id_or_404),
     user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
 
-    project = db.scalar(select(Project).where(Project.id == project_id))
-
-    if project is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Project not found"
-        )
+    project_repo = ProjectRepository(db)
 
     if not can_view_project(db, user, project):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Project not found"
         )
 
-    project_members = db.scalars(
-        select(ProjectMember)
-        .where(ProjectMember.project_id == project_id)
-        .order_by(ProjectMember.user_id)
-    ).all()
+    project_members = project_repo.list_project_members(project.id)
 
     return project_members
-
-
-@router.get("/{project_id}/members/{member_id}", response_model=ProjectMemberRead)
-def get_project_member(
-    project_id: int,
-    member_id: int,
-    user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db),
-):
-
-    project = db.scalar(select(Project).where(Project.id == project_id))
-
-    if project is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Project not found"
-        )
-
-    if not can_view_project(db, user, project):
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Project not found"
-        )
-
-    project_member = db.scalar(
-        select(ProjectMember).where(
-            ProjectMember.project_id == project_id, ProjectMember.user_id == member_id
-        )
-    )
-
-    if project_member is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Member not found"
-        )
-
-    return project_member

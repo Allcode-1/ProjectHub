@@ -8,7 +8,6 @@ class SprintCreate(BaseModel):
     name: str = Field(min_length=3, max_length=55)
     description: str | None = Field(max_length=255)
     starts_at: datetime | None = None
-    ends_at: datetime | None = None
 
 
 class SprintRead(BaseModel):

@@ -24,7 +24,7 @@ def is_project_owner(user: User, project: Project) -> bool:
 
 def can_view_project(db: Session, user: User, project: Project) -> bool:
 
-    if is_project_owner:
+    if is_project_owner(user, project):
         return True
 
     access = get_project_access(db, user.id, project.id)
@@ -37,7 +37,7 @@ def can_view_project(db: Session, user: User, project: Project) -> bool:
 
 
 def can_take_tasks(db: Session, user: User, project: Project) -> bool:
-    if is_project_owner:
+    if is_project_owner(user, project):
         return True
 
     access = get_project_access(db, user.id, project.id)
@@ -49,7 +49,7 @@ def can_take_tasks(db: Session, user: User, project: Project) -> bool:
 
 
 def can_manage_sprints(db: Session, user: User, project: Project) -> bool:
-    if is_project_owner:
+    if is_project_owner(user, project):
         return True
 
     access = get_project_access(db, user.id, project.id)

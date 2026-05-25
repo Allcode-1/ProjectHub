@@ -18,6 +18,7 @@ from app.schemas.project_invite import (
     ProjectInviteUpdate,
 )
 
+from app.services.project_membership import can_manage_sprints
 
 router = APIRouter()
 
@@ -35,9 +36,7 @@ def invite_user_to_project(
     db: Session = Depends(get_db),
 ):
 
-    existing_project = db.scalar(
-        select(Project).where(Project.id == project_id)
-    )
+    existing_project = db.scalar(select(Project).where(Project.id == project_id))
 
     if not existing_project:
         raise HTTPException(
@@ -96,9 +95,7 @@ def update_user_invite(
     db: Session = Depends(get_db),
 ):
 
-    existing_project = db.scalar(
-        select(Project).where(Project.id == project_id)
-    )
+    existing_project = db.scalar(select(Project).where(Project.id == project_id))
 
     if not existing_project:
         raise HTTPException(
@@ -152,9 +149,7 @@ def delete_user_invite(
     db: Session = Depends(get_db),
 ):
 
-    existing_project = db.scalar(
-        select(Project).where(Project.id == project_id)
-    )
+    existing_project = db.scalar(select(Project).where(Project.id == project_id))
 
     if not existing_project:
         raise HTTPException(
