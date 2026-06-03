@@ -54,4 +54,4 @@ def can_manage_sprints(db: Session, user: User, project: Project) -> bool:
 
     access = get_project_access(db, user.id, project.id)
 
-    return access is not None and access.role in (ProjectInviteAccessLevel.ADMIN)
+    return access is not None and access.role == ProjectInviteAccessLevel.ADMIN

@@ -26,6 +26,5 @@ class SprintRead(BaseModel):
 class SprintUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=3, max_length=55)
     description: str | None = Field(default=None, max_length=255)
-    status: SprintStatus | None = Field(default=None)
     starts_at: datetime | None = Field(default=None)
     ends_at: datetime | None = Field(default=None)

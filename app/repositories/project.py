@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 
 from app.models.user import User
 from app.models.project import Project
-from app.models.project_member import ProjectMember
+from app.models.project_member import ProjectMember, ProjectInviteAccessLevel
 
 
 class ProjectRepository:
@@ -36,6 +36,18 @@ class ProjectRepository:
             .where(or_(Project.owner_id == user_id, Project.id.in_(member_project_ids)))
             .order_by(Project.id)
         ).all()
+
+    def project_worker_by_id(self, project_id: int, user_id: int) -> User:
+
+        return self.db.scalar(
+            select(User)
+            .join(ProjectMember, User.id == ProjectMember.user_id)
+            .where(
+                ProjectMember.user_id == user_id,
+                ProjectMember.project_id == project_id,
+                ProjectMember.role == ProjectInviteAccessLevel.WORKER,
+            )
+        )
 
     def list_project_members(self, project_id: int) -> list[User]:
 

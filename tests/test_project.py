@@ -1,25 +1,15 @@
-from tests.helpers import auth_headers, create_schedule, register_and_login
+from tests.helpers import (
+    auth_headers,
+    create_project,
+    invite_and_accept_member,
+    register_and_login,
+)
 
 
-def test_add_project(client):
-    _, tokens = register_and_login(client, username="sam")
+def test_create_and_list_owned_project(client):
+    _, tokens = register_and_login(client, username="owner")
 
-    response = client.post(
-        "/api/v1/projects/",
-        json={"name": "Mobile app", "description": "Mobile app for google"},
-        headers=auth_headers(tokens["access_token"]),
-    )
-
-    assert response.status_code == 201
-
-    data = response.json()
-    assert data["name"] == "Mobile app"
-    assert data["description"] == "Mobile app for google"
-
-
-def test_read_own_projects(client):
-    _, tokens = register_and_login(client, username="sam")
-    create_schedule(client, tokens["access_token"])
+    project = create_project(client, tokens["access_token"])
 
     response = client.get(
         "/api/v1/projects/",
@@ -27,13 +17,51 @@ def test_read_own_projects(client):
     )
 
     assert response.status_code == 200
-
-    data = response.json()
-    assert data[0]["name"] == "Mobile app"
-    assert data[0]["description"] == "Mobile app for google"
+    assert response.json() == [project]
 
 
-def test_read_schedules_without_token(client):
+def test_project_is_hidden_from_unrelated_user(client):
+    _, owner_tokens = register_and_login(client, username="owner")
+    _, outsider_tokens = register_and_login(client, username="outsider")
+    project = create_project(client, owner_tokens["access_token"])
+
+    response = client.get(
+        f"/api/v1/projects/{project['id']}",
+        headers=auth_headers(outsider_tokens["access_token"]),
+    )
+
+    assert response.status_code == 403
+
+
+def test_accepted_member_can_see_project_and_member_list(client):
+    _, owner_tokens = register_and_login(client, username="owner")
+    member, member_tokens = register_and_login(client, username="worker")
+    project = create_project(client, owner_tokens["access_token"])
+    invite_and_accept_member(
+        client,
+        owner_tokens["access_token"],
+        member_tokens["access_token"],
+        project["id"],
+        member["id"],
+        access_level="worker",
+    )
+
+    project_response = client.get(
+        f"/api/v1/projects/{project['id']}",
+        headers=auth_headers(member_tokens["access_token"]),
+    )
+    members_response = client.get(
+        f"/api/v1/projects/{project['id']}/members",
+        headers=auth_headers(owner_tokens["access_token"]),
+    )
+
+    assert project_response.status_code == 200
+    assert project_response.json()["id"] == project["id"]
+    assert members_response.status_code == 200
+    assert members_response.json()[0]["id"] == member["id"]
+
+
+def test_projects_require_authentication(client):
     response = client.get("/api/v1/projects/")
 
     assert response.status_code == 401
