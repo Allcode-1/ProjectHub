@@ -1,7 +1,7 @@
 from jwt.exceptions import InvalidTokenError
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, status, Form
+from fastapi import APIRouter, Depends, HTTPException, status, Form, Request
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -15,6 +15,9 @@ from app.auth.dependencies import get_current_active_user, require_admin
 from app.auth.tokens import create_access_token, create_refresh_token
 
 from app.auth.schemas import UserCreate, UserRead, TokenPair, RefreshToken
+
+from app.services.rate_limiter import RateLimiter
+from app.dependencies.rate_limiter import get_rate_limiter
 
 
 router = APIRouter(prefix="/auth", tags=["jwt-based auth"])
@@ -55,8 +58,22 @@ def register_user(payload: UserCreate, db: Session = Depends(get_db)):
 
 @router.post("/login", response_model=TokenPair)
 def login_user(
-    username: str = Form(), password: str = Form(), db: Session = Depends(get_db)
+    request: Request,
+    username: str = Form(),
+    password: str = Form(),
+    db: Session = Depends(get_db),
+    rate_limiter: RateLimiter = Depends(get_rate_limiter),
 ):
+
+    client_ip = request.client.host if request.client else "unknown"
+
+    rate_limiter.check(
+        key=f"rate:auth:login:ip:{client_ip}", limit=10, window_seconds=60
+    )
+
+    rate_limiter.check(
+        key=f"rate:auth:login:username:{username}", limit=5, window_seconds=300
+    )
 
     user = db.scalar(select(User).where(User.username == username))
 

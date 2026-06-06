@@ -11,6 +11,7 @@ from app.schemas.project import ProjectCreate, ProjectRead, ProjectUpdate
 from app.auth.schemas import UserRead
 
 from app.services.project_actions import create_project, update_project, delete_project
+from app.services.project_queries import ProjectQueryService
 
 from app.repositories.project import ProjectRepository
 
@@ -18,7 +19,7 @@ from app.dependencies.project import (
     require_can_manage_sprints,
     require_can_view_project,
 )
-
+from app.dependencies.project_queries import get_project_query_service
 
 router = APIRouter()
 
@@ -35,11 +36,11 @@ def add_project_router(
 
 @router.get("/", response_model=list[ProjectRead])
 def get_projects_router(
-    user: User = Depends(get_current_active_user), db: Session = Depends(get_db)
+    user: User = Depends(get_current_active_user),
+    project_queries: ProjectQueryService = Depends(get_project_query_service),
 ):
 
-    project_repo = ProjectRepository(db)
-    return project_repo.list_accessible_by_user(user.id)
+    return project_queries.list_accessible_by_user(user.id)
 
 
 @router.get("/{project_id}", response_model=ProjectRead)

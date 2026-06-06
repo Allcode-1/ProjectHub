@@ -107,7 +107,9 @@ def test_viewer_cannot_take_task(client):
         access_level="viewer",
     )
     sprint = create_sprint(client, owner_tokens["access_token"], project["id"])
-    task = create_task(client, owner_tokens["access_token"], project["id"], sprint["id"])
+    task = create_task(
+        client, owner_tokens["access_token"], project["id"], sprint["id"]
+    )
 
     response = client.patch(
         f"/api/v1/projects/{project['id']}/sprints/{sprint['id']}/tasks/"

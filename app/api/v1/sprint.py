@@ -16,14 +16,15 @@ from app.services.sprint_actions import (
     start_sprint,
     close_sprint,
 )
+from app.services.sprint_queries import SprintQueryService
 
-from app.repositories.sprint import SprintRepository
 
 from app.dependencies.sprint import get_sprint_by_id_or_404
 from app.dependencies.project import (
     require_can_manage_sprints,
     require_can_view_project,
 )
+from app.dependencies.sprint_queries import get_sprint_query_service
 
 
 router = APIRouter()
@@ -44,13 +45,10 @@ def add_sprint_router(
 def get_sprints_router(
     project: Project = Depends(require_can_view_project),
     user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db),
+    sprint_queries: SprintQueryService = Depends(get_sprint_query_service),
 ):
 
-    sprint_repo = SprintRepository(db)
-    sprints = sprint_repo.all_sprints(project.id)
-
-    return sprints
+    return sprint_queries.list_accessible_by_project(project.id)
 
 
 @router.get("/{sprint_id}", response_model=SprintRead)

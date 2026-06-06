@@ -16,6 +16,7 @@ class Auth_JWT(BaseModel):
 
 class Settings(BaseSettings):
     auth_jwt: Auth_JWT = Auth_JWT()
+    redis_url: str = "redis://localhost:6390/0"
 
 
 settings = Settings()
