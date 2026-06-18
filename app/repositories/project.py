@@ -17,13 +17,15 @@ class ProjectRepository:
         self.db.add(project)
         return project
 
-    def get_by_id(self, project_id: int) -> Project:
+    def get_by_id(self, project_id: int) -> Project | None:
         return self.db.scalar(select(Project).where(Project.id == project_id))
 
     def list_owned_by_user(self, user_id: int) -> list[Project]:
-        return self.db.scalars(
-            select(Project).where(Project.owner_id == user_id).order_by(Project.id)
-        ).all()
+        return list(
+            self.db.scalars(
+                select(Project).where(Project.owner_id == user_id).order_by(Project.id)
+            ).all()
+        )
 
     def list_accessible_by_user(self, user_id: int) -> list[Project]:
 
@@ -31,13 +33,20 @@ class ProjectRepository:
             ProjectMember.user_id == user_id
         )
 
-        return self.db.scalars(
-            select(Project)
-            .where(or_(Project.owner_id == user_id, Project.id.in_(member_project_ids)))
-            .order_by(Project.id)
-        ).all()
+        return list(
+            self.db.scalars(
+                select(Project)
+                .where(
+                    or_(
+                        Project.owner_id == user_id,
+                        Project.id.in_(member_project_ids),
+                    )
+                )
+                .order_by(Project.id)
+            ).all()
+        )
 
-    def project_worker_by_id(self, project_id: int, user_id: int) -> User:
+    def project_worker_by_id(self, project_id: int, user_id: int) -> User | None:
 
         return self.db.scalar(
             select(User)

@@ -32,7 +32,7 @@ class SprintRepository:
         self.db.add(sprint)
         return sprint
 
-    def get_by_id(self, project_id, sprint_id) -> Sprint:
+    def get_by_id(self, project_id: int, sprint_id: int) -> Sprint | None:
 
         return self.db.scalar(
             select(Sprint).where(
@@ -40,8 +40,8 @@ class SprintRepository:
             )
         )
 
-    def all_sprints(self, project_id) -> list[Sprint]:
+    def all_sprints(self, project_id: int) -> list[Sprint]:
 
-        return self.db.scalars(
-            select(Sprint).where(Sprint.project_id == project_id)
-        ).all()
+        return list(
+            self.db.scalars(select(Sprint).where(Sprint.project_id == project_id)).all()
+        )

@@ -11,20 +11,11 @@ from app.models.sprint import Sprint
 
 from app.schemas.task import TaskCreate, TaskRead, TaskUpdate
 
-from app.services.task_actions import (
-    add_task,
-    update_task,
-    delete_task,
-    take_task_to_work,
-    send_task_to_review,
-    accept_task_review,
-    decline_task_review,
-)
+from app.services.task_actions import add_task, update_task, delete_task
 
 from app.repositories.task import TaskRepository
 
 from app.dependencies.project import (
-    require_can_take_tasks,
     require_can_manage_sprints,
     require_can_view_project,
 )
@@ -60,6 +51,71 @@ def get_tasks_router(
     return tasks
 
 
+@router.get("/todo", response_model=list[TaskRead])
+def get_tasks_todo(
+    project: Project = Depends(require_can_view_project),
+    sprint: Sprint = Depends(get_sprint_by_id_or_404),
+    user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+
+    task_repo = TaskRepository(db)
+    tasks = task_repo.tasks_todo(project.id, sprint.id)
+    return tasks
+
+
+@router.get("/in_progress", response_model=list[TaskRead])
+def get_tasks_in_progress(
+    project: Project = Depends(require_can_view_project),
+    sprint: Sprint = Depends(get_sprint_by_id_or_404),
+    user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+
+    task_repo = TaskRepository(db)
+    tasks = task_repo.tasks_in_progress(project.id, sprint.id)
+    return tasks
+
+
+@router.get("/on_review", response_model=list[TaskRead])
+def get_tasks_on_review(
+    project: Project = Depends(require_can_view_project),
+    sprint: Sprint = Depends(get_sprint_by_id_or_404),
+    user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+
+    task_repo = TaskRepository(db)
+    tasks = task_repo.tasks_on_review(project.id, sprint.id)
+    return tasks
+
+
+@router.get("/done", response_model=list[TaskRead])
+def get_tasks_done(
+    project: Project = Depends(require_can_view_project),
+    sprint: Sprint = Depends(get_sprint_by_id_or_404),
+    user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+
+    task_repo = TaskRepository(db)
+    tasks = task_repo.tasks_done(project.id, sprint.id)
+    return tasks
+
+
+@router.get("/rejected", response_model=list[TaskRead])
+def get_tasks_rejected(
+    project: Project = Depends(require_can_view_project),
+    sprint: Sprint = Depends(get_sprint_by_id_or_404),
+    user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+
+    task_repo = TaskRepository(db)
+    tasks = task_repo.tasks_rejected(project.id, sprint.id)
+    return tasks
+
+
 @router.get("/{task_id}", response_model=TaskRead)
 def get_task_router(
     project: Project = Depends(require_can_view_project),
@@ -81,7 +137,7 @@ def delete_task_router(
     db: Session = Depends(get_db),
 ):
 
-    return delete_task(task, user, db)
+    return delete_task(project, task, user, db)
 
 
 @router.patch("/{task_id}", response_model=TaskRead)
@@ -94,58 +150,8 @@ def update_task_router(
     db: Session = Depends(get_db),
 ):
 
-    return update_task(payload, task, user, db)
+    return update_task(payload, project, task, user, db)
 
 
-@router.patch("/{task_id}/take_task", response_model=TaskRead)
-def take_task_to_work_router(
-    project: Project = Depends(require_can_take_tasks),
-    sprint: Sprint = Depends(get_sprint_by_id_or_404),
-    task: Task = Depends(get_task_by_id_or_404),
-    user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db),
-):
-
-    return take_task_to_work(task, user, db)
-
-
-@router.patch("/{task_id}/to_review", response_model=TaskRead)
-def send_task_to_review_router(
-    project: Project = Depends(require_can_take_tasks),
-    sprint: Sprint = Depends(get_sprint_by_id_or_404),
-    task: Task = Depends(get_task_by_id_or_404),
-    user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db),
-):
-
-    return send_task_to_review(task, user, db)
-
-
-@router.patch("/{task_id}/accept", response_model=TaskRead)
-def accept_task_review_router(
-    project: Project = Depends(require_can_manage_sprints),
-    sprint: Sprint = Depends(get_sprint_by_id_or_404),
-    task: Task = Depends(get_task_by_id_or_404),
-    user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db),
-):
-
-    return accept_task_review(task, user, db)
-
-
-@router.patch("/{task_id}/decline", response_model=TaskRead)
-def decline_task_review_router(
-    project: Project = Depends(require_can_manage_sprints),
-    sprint: Sprint = Depends(get_sprint_by_id_or_404),
-    task: Task = Depends(get_task_by_id_or_404),
-    user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db),
-):
-
-    return decline_task_review(task, user, db)
-
-
-# TODO: individual endpoints for in_progress, done, rejected tasks or filter
 # TODO: "/tasks/mine" for tasks that i created
-# TODO: "/tasks/my_workspace" for tasks that i working on
-# TODO: add comments to task accept/decline for workflow improving
+# TODO: "/tasks/my_workspace" for tasks that im currently working on

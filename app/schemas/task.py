@@ -1,5 +1,5 @@
 from datetime import datetime
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from app.models.task import TaskStatus
 
 
@@ -10,6 +10,8 @@ class TaskCreate(BaseModel):
 
 
 class TaskRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     project_id: int
     sprint_id: int
@@ -25,4 +27,4 @@ class TaskRead(BaseModel):
 class TaskUpdate(BaseModel):
     worker_id: int | None = None
     title: str | None = Field(default=None, min_length=3, max_length=55)
-    description: str | None = Field(default=None, min_length=3, max_length=55)
+    description: str | None = Field(default=None, min_length=3, max_length=255)

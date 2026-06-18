@@ -4,6 +4,7 @@ from app.api.v1 import project
 from app.api.v1 import sprint
 from app.api.v1 import project_invite
 from app.api.v1 import task
+from app.api.v1 import task_actions
 
 v1_router = APIRouter(prefix="/api/v1")
 
@@ -16,4 +17,9 @@ v1_router.include_router(
     task.router,
     prefix="/projects/{project_id}/sprints/{sprint_id}/tasks",
     tags=["tasks"],
+)
+v1_router.include_router(
+    task_actions.router,
+    prefix="/projects/{project_id}/sprints/{sprint_id}/tasks",
+    tags=["task actions"],
 )
