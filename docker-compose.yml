@@ -1,0 +1,35 @@
+services:
+  api:
+    build: .
+    container_name: project-hub-api
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: postgresql+psycopg://postgres:postgres@db:5432/project_hub
+      REDIS_URL: redis://redis:6379/0
+    volumes:
+      - ./certs:/app/certs:ro
+    depends_on:
+      - db
+      - redis
+
+  db:
+    image: postgres:17-alpine
+    container_name: project-hub-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: project_hub
+    volumes:
+      - project_hub_pgdata:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    container_name: project-hub-redis
+    volumes:
+      - project_hub_redisdata:/data
+
+
+volumes:
+  project_hub_pgdata:
+  project_hub_redisdata:

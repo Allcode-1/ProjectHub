@@ -119,3 +119,61 @@ class TaskRepository:
                 .order_by(Task.id)
             ).all()
         )
+
+    def tasks_created_by_user(
+        self,
+        project_id: int,
+        sprint_id: int,
+        creator_id: int,
+    ) -> list[Task]:
+
+        return list(
+            self.db.scalars(
+                select(Task)
+                .where(
+                    Task.project_id == project_id,
+                    Task.sprint_id == sprint_id,
+                    Task.creator_id == creator_id,
+                )
+                .order_by(Task.id)
+            ).all()
+        )
+
+    def tasks_assigned_to_user(
+        self,
+        project_id: int,
+        sprint_id: int,
+        worker_id: int,
+    ) -> list[Task]:
+
+        return list(
+            self.db.scalars(
+                select(Task)
+                .where(
+                    Task.project_id == project_id,
+                    Task.sprint_id == sprint_id,
+                    Task.worker_id == worker_id,
+                )
+                .order_by(Task.id)
+            ).all()
+        )
+
+    def rejected_tasks_assigned_to_user(
+        self,
+        project_id: int,
+        sprint_id: int,
+        worker_id: int,
+    ) -> list[Task]:
+
+        return list(
+            self.db.scalars(
+                select(Task)
+                .where(
+                    Task.project_id == project_id,
+                    Task.sprint_id == sprint_id,
+                    Task.worker_id == worker_id,
+                    Task.status == TaskStatus.REJECTED,
+                )
+                .order_by(Task.id)
+            ).all()
+        )

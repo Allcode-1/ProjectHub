@@ -43,7 +43,7 @@ class User(Base):
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
 
-    project_members: Mapped[list["ProjectMember"]] = relationship(back_populates="user")
+    project_members: Mapped[list["ProjectMember"]] = relationship(back_populates="user", passive_deletes=True)
 
     projects: Mapped[list["Project"]] = relationship(back_populates="owner")
 

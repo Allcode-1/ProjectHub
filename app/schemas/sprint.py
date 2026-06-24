@@ -13,7 +13,7 @@ class SprintCreate(BaseModel):
 class SprintRead(BaseModel):
     id: int
     project_id: int
-    creator_id: int
+    creator_id: int | None
     name: str
     description: str | None
     status: SprintStatus

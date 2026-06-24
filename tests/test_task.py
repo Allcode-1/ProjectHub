@@ -144,6 +144,38 @@ def test_task_status_routes_return_task_lists(client):
     assert done_response.json() == []
 
 
+def test_user_task_lists(client):
+    owner_tokens, worker, worker_tokens, project, sprint = setup_project_with_worker(
+        client
+    )
+    task = create_task(
+        client,
+        owner_tokens["access_token"],
+        project["id"],
+        sprint["id"],
+        worker_id=worker["id"],
+    )
+
+    mine_response = client.get(
+        f"/api/v1/projects/{project['id']}/sprints/{sprint['id']}/tasks/mine",
+        headers=auth_headers(owner_tokens["access_token"]),
+    )
+    workspace_response = client.get(
+        f"/api/v1/projects/{project['id']}/sprints/{sprint['id']}/tasks/my_workspace",
+        headers=auth_headers(worker_tokens["access_token"]),
+    )
+    worker_mine_response = client.get(
+        f"/api/v1/projects/{project['id']}/sprints/{sprint['id']}/tasks/mine",
+        headers=auth_headers(worker_tokens["access_token"]),
+    )
+
+    assert mine_response.status_code == 200
+    assert mine_response.json()[0]["id"] == task["id"]
+    assert workspace_response.status_code == 200
+    assert workspace_response.json()[0]["id"] == task["id"]
+    assert worker_mine_response.status_code == 403
+
+
 def test_project_admin_can_update_and_delete_task(client):
     _, owner_tokens = register_and_login(client, username="owner")
     admin, admin_tokens = register_and_login(client, username="admin")
@@ -224,6 +256,29 @@ def test_decline_task_creates_optional_review_comment(client, db_session):
     assert len(comments) == 1
     assert comments[0].task_id == commented_task_id
     assert comments[0].comment == "Fix error handling"
+
+    list_response = client.get(
+        f"/api/v1/projects/{project['id']}/sprints/{sprint['id']}/tasks/"
+        "my_review_comments",
+        headers=auth_headers(worker_tokens["access_token"]),
+    )
+    detail_response = client.get(
+        f"/api/v1/projects/{project['id']}/sprints/{sprint['id']}/tasks/"
+        f"my_review_comments/{comments[0].id}",
+        headers=auth_headers(worker_tokens["access_token"]),
+    )
+    owner_detail_response = client.get(
+        f"/api/v1/projects/{project['id']}/sprints/{sprint['id']}/tasks/"
+        f"my_review_comments/{comments[0].id}",
+        headers=auth_headers(owner_tokens["access_token"]),
+    )
+
+    assert list_response.status_code == 200
+    assert len(list_response.json()) == 1
+    assert list_response.json()[0]["id"] == comments[0].id
+    assert detail_response.status_code == 200
+    assert detail_response.json()["comment"] == "Fix error handling"
+    assert owner_detail_response.status_code == 404
 
 
 def test_viewer_cannot_take_task(client):

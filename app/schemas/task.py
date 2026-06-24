@@ -15,7 +15,7 @@ class TaskRead(BaseModel):
     id: int
     project_id: int
     sprint_id: int
-    creator_id: int
+    creator_id: int | None
     worker_id: int | None
     title: str
     description: str | None

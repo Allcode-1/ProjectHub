@@ -17,6 +17,7 @@ from app.repositories.task import TaskRepository
 
 from app.dependencies.project import (
     require_can_manage_sprints,
+    require_can_take_tasks,
     require_can_view_project,
 )
 from app.dependencies.sprint import get_sprint_by_id_or_404
@@ -116,6 +117,32 @@ def get_tasks_rejected(
     return tasks
 
 
+@router.get("/mine", response_model=list[TaskRead])
+def get_my_created_tasks(
+    project: Project = Depends(require_can_manage_sprints),
+    sprint: Sprint = Depends(get_sprint_by_id_or_404),
+    user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+
+    task_repo = TaskRepository(db)
+    tasks = task_repo.tasks_created_by_user(project.id, sprint.id, user.id)
+    return tasks
+
+
+@router.get("/my_workspace", response_model=list[TaskRead])
+def get_my_workspace_tasks(
+    project: Project = Depends(require_can_take_tasks),
+    sprint: Sprint = Depends(get_sprint_by_id_or_404),
+    user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+
+    task_repo = TaskRepository(db)
+    tasks = task_repo.tasks_assigned_to_user(project.id, sprint.id, user.id)
+    return tasks
+
+
 @router.get("/{task_id}", response_model=TaskRead)
 def get_task_router(
     project: Project = Depends(require_can_view_project),
@@ -151,7 +178,3 @@ def update_task_router(
 ):
 
     return update_task(payload, project, task, user, db)
-
-
-# TODO: "/tasks/mine" for tasks that i created
-# TODO: "/tasks/my_workspace" for tasks that im currently working on

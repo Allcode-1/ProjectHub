@@ -55,6 +55,11 @@ test isolation for Redis, and more complete workflow rules.
 - mypy
 - uv
 
+### Documentation
+
+- [Architecture](docs/ARCHITECTURE.md)
+- [RBAC](docs/RBAC.md)
+
 ### Requirements
 
 Create a `.env` file with at least:

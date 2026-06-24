@@ -2,7 +2,7 @@ from enum import Enum
 from datetime import datetime
 
 from sqlalchemy.orm import Mapped, mapped_column
-from sqlalchemy import String, DateTime, Enum as SAEnum, ForeignKey, func
+from sqlalchemy import CheckConstraint, String, DateTime, Enum as SAEnum, ForeignKey, func
 
 from app.db.session import Base
 
@@ -15,12 +15,18 @@ class SprintStatus(str, Enum):
 
 class Sprint(Base):
     __tablename__ = "sprints"
+    __table_args__ = (
+        CheckConstraint(
+            "ends_at IS NULL OR starts_at IS NULL OR ends_at > starts_at",
+            name="ck_sprints_ends_after_starts",
+        ),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     project_id: Mapped[int] = mapped_column(
         ForeignKey("projects.id", ondelete="CASCADE"), nullable=False
     )
-    creator_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
+    creator_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     name: Mapped[str] = mapped_column(String(55), nullable=False)
     description: Mapped[str | None] = mapped_column(String(255), nullable=True)
 

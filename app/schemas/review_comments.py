@@ -18,5 +18,5 @@ class ReviewCommentRead(BaseModel):
     id: int
     task_id: int
     comment: str
-    author_id: int
+    author_id: int | None
     created_at: datetime
