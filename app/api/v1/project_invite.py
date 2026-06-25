@@ -25,6 +25,8 @@ from app.repositories.project_invite import ProjectInviteRepository
 
 from app.dependencies.project import require_can_manage_sprints
 from app.dependencies.project_invite import recipient_by_id_or_404
+from app.dependencies.cache import get_project_cache
+from app.cache.project import ProjectCache
 
 
 router = APIRouter()
@@ -109,9 +111,10 @@ def accept_invite_router(
     invite_id: int,
     user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
+    project_cache: ProjectCache = Depends(get_project_cache),
 ):
 
-    return accept_invite(invite_id, user, db)
+    return accept_invite(invite_id, user, db, project_cache)
 
 
 @router.patch("/invites/decline/{invite_id}", response_model=ProjectInviteRead)

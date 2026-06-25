@@ -21,6 +21,9 @@ from app.dependencies.project import (
 )
 from app.dependencies.project_queries import get_project_query_service
 
+from app.cache.project import ProjectCache
+from app.dependencies.cache import get_project_cache
+
 router = APIRouter()
 
 
@@ -29,9 +32,10 @@ def add_project_router(
     payload: ProjectCreate,
     user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
+    project_cache: ProjectCache = Depends(get_project_cache)
 ):
 
-    return create_project(payload, user, db)
+    return create_project(payload, user, db, project_cache)
 
 
 @router.get("/", response_model=list[ProjectRead])
@@ -58,9 +62,10 @@ def delete_project_router(
     project: Project = Depends(require_can_manage_sprints),
     user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
+    project_cache: ProjectCache = Depends(get_project_cache)
 ):
 
-    return delete_project(project, user, db)
+    return delete_project(project, user, db, project_cache)
 
 
 @router.patch("/{project_id}", response_model=ProjectRead)
@@ -69,9 +74,10 @@ def update_project_router(
     project: Project = Depends(require_can_manage_sprints),
     user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
+    project_cache: ProjectCache = Depends(get_project_cache)
 ):
 
-    return update_project(payload, project, user, db)
+    return update_project(payload, project, user, db, project_cache)
 
 
 @router.get("/{project_id}/members", response_model=list[UserRead])

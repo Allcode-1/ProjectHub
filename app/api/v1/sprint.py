@@ -26,6 +26,9 @@ from app.dependencies.project import (
 )
 from app.dependencies.sprint_queries import get_sprint_query_service
 
+from app.cache.sprint import SprintCache
+from app.dependencies.cache import get_sprint_cache
+
 
 router = APIRouter()
 
@@ -36,9 +39,10 @@ def add_sprint_router(
     project: Project = Depends(require_can_manage_sprints),
     user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
+    sprint_cache: SprintCache = Depends(get_sprint_cache)
 ):
 
-    return create_sprint(payload, project, user, db)
+    return create_sprint(payload, project, user, db, sprint_cache)
 
 
 @router.get("/", response_model=list[SprintRead])
@@ -68,9 +72,10 @@ def delete_sprint_router(
     sprint: Sprint = Depends(get_sprint_by_id_or_404),
     user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
+    sprint_cache: SprintCache = Depends(get_sprint_cache)
 ):
 
-    return delete_sprint(project, sprint, user, db)
+    return delete_sprint(project, sprint, user, db, sprint_cache)
 
 
 @router.patch("/{sprint_id}", response_model=SprintRead)
@@ -80,9 +85,10 @@ def update_sprint_router(
     sprint: Sprint = Depends(get_sprint_by_id_or_404),
     user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
+    sprint_cache: SprintCache = Depends(get_sprint_cache)
 ):
 
-    return update_sprint(payload, project, sprint, user, db)
+    return update_sprint(payload, project, sprint, user, db, sprint_cache)
 
 
 @router.patch("/{sprint_id}/start", response_model=SprintRead)
@@ -91,9 +97,10 @@ def start_sprint_router(
     sprint: Sprint = Depends(get_sprint_by_id_or_404),
     user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
+    sprint_cache: SprintCache = Depends(get_sprint_cache)
 ):
 
-    return start_sprint(project, sprint, user, db)
+    return start_sprint(project, sprint, user, db, sprint_cache)
 
 
 @router.patch("/{sprint_id}/close", response_model=SprintRead)
@@ -102,6 +109,7 @@ def close_sprint_rputer(
     sprint: Sprint = Depends(get_sprint_by_id_or_404),
     user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
+    sprint_cache: SprintCache = Depends(get_sprint_cache)
 ):
 
-    return close_sprint(project, sprint, user, db)
+    return close_sprint(project, sprint, user, db, sprint_cache)

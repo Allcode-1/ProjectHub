@@ -16,6 +16,7 @@ from app.schemas.project_invite import ProjectInviteCreate, ProjectInviteUpdate
 from app.repositories.project_invite import ProjectInviteRepository
 
 from app.services.project_membership import can_view_project
+from app.cache.project import ProjectCache
 
 
 def invite_to_project_by_id(
@@ -109,7 +110,12 @@ def delete_invite(project: Project, user: User, recipient: User, db: Session) ->
     return None
 
 
-def accept_invite(invite_id: int, user: User, db: Session) -> ProjectInvite:
+def accept_invite(
+    invite_id: int,
+    user: User,
+    db: Session,
+    project_cache: ProjectCache,
+) -> ProjectInvite:
 
     invites_repo = ProjectInviteRepository(db)
 
@@ -140,6 +146,8 @@ def accept_invite(invite_id: int, user: User, db: Session) -> ProjectInvite:
     db.add(new_project_member)
     db.commit()
     db.refresh(existing_invite)
+
+    project_cache.invalidate_user_projects(user.id)
 
     return existing_invite
 

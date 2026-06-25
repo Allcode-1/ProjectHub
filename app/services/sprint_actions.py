@@ -13,9 +13,11 @@ from app.repositories.sprint import SprintRepository
 
 from app.services.project_membership import can_manage_sprints
 
+from app.cache.sprint import SprintCache
+
 
 def create_sprint(
-    payload: SprintCreate, project: Project, user: User, db: Session
+    payload: SprintCreate, project: Project, user: User, db: Session, sprint_cache: SprintCache
 ) -> Sprint:
 
     sprint_repo = SprintRepository(db)
@@ -35,11 +37,13 @@ def create_sprint(
     db.commit()
     db.refresh(sprint)
 
+    sprint_cache.invalidate_project_sprints(project.id)
+
     return sprint
 
 
 def update_sprint(
-    payload: SprintUpdate, project: Project, sprint: Sprint, user: User, db: Session
+    payload: SprintUpdate, project: Project, sprint: Sprint, user: User, db: Session, sprint_cache: SprintCache
 ) -> Sprint:
 
     if not can_manage_sprints(db, user, project):
@@ -54,10 +58,12 @@ def update_sprint(
     db.commit()
     db.refresh(sprint)
 
+    sprint_cache.invalidate_project_sprints(project.id)
+
     return sprint
 
 
-def delete_sprint(project: Project, sprint: Sprint, user: User, db: Session) -> None:
+def delete_sprint(project: Project, sprint: Sprint, user: User, db: Session, sprint_cache: SprintCache) -> None:
 
     if not can_manage_sprints(db, user, project):
         raise HTTPException(
@@ -67,10 +73,12 @@ def delete_sprint(project: Project, sprint: Sprint, user: User, db: Session) -> 
     db.delete(sprint)
     db.commit()
 
+    sprint_cache.invalidate_project_sprints(project.id)
+
     return None
 
 
-def start_sprint(project: Project, sprint: Sprint, user: User, db: Session) -> Sprint:
+def start_sprint(project: Project, sprint: Sprint, user: User, db: Session, sprint_cache: SprintCache) -> Sprint:
 
     if not can_manage_sprints(db, user, project):
         raise HTTPException(
@@ -90,10 +98,12 @@ def start_sprint(project: Project, sprint: Sprint, user: User, db: Session) -> S
     db.commit()
     db.refresh(sprint)
 
+    sprint_cache.invalidate_project_sprints(project.id)
+
     return sprint
 
 
-def close_sprint(project: Project, sprint: Sprint, user: User, db: Session) -> Sprint:
+def close_sprint(project: Project, sprint: Sprint, user: User, db: Session, sprint_cache: SprintCache) -> Sprint:
 
     if not can_manage_sprints(db, user, project):
         raise HTTPException(
@@ -107,5 +117,7 @@ def close_sprint(project: Project, sprint: Sprint, user: User, db: Session) -> S
 
     db.commit()
     db.refresh(sprint)
+
+    sprint_cache.invalidate_project_sprints(project.id)
 
     return sprint
