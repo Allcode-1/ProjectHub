@@ -59,3 +59,57 @@ def test_get_me_without_token(client):
     response = client.get("/auth/users/me")
 
     assert response.status_code == 401
+
+
+def test_refresh_rotates_refresh_token_and_revokes_old_one(client):
+    register_user(client, username="sam", email="sam@example.com")
+    tokens = login_user(client, username="sam")
+
+    refresh_response = client.post(
+        "/auth/refresh",
+        json={"refresh_token": tokens["refresh_token"]},
+    )
+    old_refresh_response = client.post(
+        "/auth/refresh",
+        json={"refresh_token": tokens["refresh_token"]},
+    )
+
+    assert refresh_response.status_code == 200
+    assert refresh_response.json()["refresh_token"] != tokens["refresh_token"]
+    assert old_refresh_response.status_code == 401
+
+
+def test_logout_revokes_refresh_token(client):
+    register_user(client, username="sam", email="sam@example.com")
+    tokens = login_user(client, username="sam")
+
+    logout_response = client.post(
+        "/auth/logout",
+        json={"refresh_token": tokens["refresh_token"]},
+    )
+    refresh_response = client.post(
+        "/auth/refresh",
+        json={"refresh_token": tokens["refresh_token"]},
+    )
+
+    assert logout_response.status_code == 200
+    assert logout_response.json() == {"message": "Logged out"}
+    assert refresh_response.status_code == 401
+
+
+def test_login_rate_limit_uses_test_redis_without_external_service(client):
+    register_user(client, username="sam", email="sam@example.com")
+
+    for _ in range(5):
+        response = client.post(
+            "/auth/login",
+            data={"username": "sam", "password": "wrong-password"},
+        )
+        assert response.status_code == 401
+
+    response = client.post(
+        "/auth/login",
+        data={"username": "sam", "password": "wrong-password"},
+    )
+
+    assert response.status_code == 429
