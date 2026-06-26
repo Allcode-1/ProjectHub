@@ -11,7 +11,7 @@ from app.db.session import Base, get_db
 from app.dependencies.cache import get_cache
 from app.dependencies.rate_limiter import get_rate_limiter
 from app.main import app as fastapi_app
-from app.services.rate_limiter import RateLimiter
+from app.security.rate_limiter import RateLimiter
 import app.models  # noqa: F401
 from tests.fakes import InMemoryRedis
 

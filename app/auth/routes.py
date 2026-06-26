@@ -11,7 +11,7 @@ from app.auth.dependencies import get_current_active_user, require_admin
 
 from app.auth.schemas import UserCreate, UserRead, TokenPair, RefreshToken
 
-from app.services.rate_limiter import RateLimiter
+from app.security.rate_limiter import RateLimiter
 from app.dependencies.rate_limiter import get_rate_limiter
 
 

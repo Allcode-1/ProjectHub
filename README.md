@@ -109,6 +109,67 @@ Interactive API docs are available at:
 http://127.0.0.1:8000/docs
 ```
 
+### Docker Compose
+
+The repository includes a Docker setup for the API, PostgreSQL, and Redis.
+Docker Compose provides container-local `DATABASE_URL` and `REDIS_URL` values,
+so the `.env` file above is mainly needed for local non-Docker runs.
+
+Make sure JWT keys exist on the host before starting the API because
+`docker-compose.yml` mounts `./certs` into the container:
+
+```bash
+mkdir -p certs
+openssl genrsa -out certs/private.pem 2048
+openssl rsa -in certs/private.pem -pubout -out certs/public.pem
+```
+
+Build the API image:
+
+```bash
+docker compose build api
+```
+
+Start PostgreSQL and Redis:
+
+```bash
+docker compose up -d db redis
+```
+
+Run database migrations:
+
+```bash
+docker compose run --rm api uv run alembic upgrade head
+```
+
+If PostgreSQL is still starting, wait a few seconds and run the migration command
+again.
+
+Start the API:
+
+```bash
+docker compose up -d api
+```
+
+Check the running containers and API:
+
+```bash
+docker compose ps
+curl http://localhost:8000/health
+```
+
+Interactive API docs are available at:
+
+```text
+http://localhost:8000/docs
+```
+
+To stop the stack without deleting PostgreSQL and Redis volumes:
+
+```bash
+docker compose down
+```
+
 ### Testing
 
 Run the test suite:
