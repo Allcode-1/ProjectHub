@@ -7,11 +7,13 @@ services:
     environment:
       DATABASE_URL: postgresql+psycopg://postgres:postgres@db:5432/project_hub
       REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: amqp://project_hub:${RABBITMQ_PASSWORD}@rabbitmq:5672/project_hub
     volumes:
       - ./certs:/app/certs:ro
     depends_on:
       - db
       - redis
+      - rabbitmq
 
   db:
     image: postgres:17-alpine
@@ -29,7 +31,55 @@ services:
     volumes:
       - project_hub_redisdata:/data
 
+  worker: 
+    build: .
+    container_name: project-hub-worker
+
+    command:
+      - uv
+      - run
+      - celery
+      - -A
+      - app.jobs.celery_app:celery_app
+      - worker
+      - --loglevel=INFO
+      - --pool=prefork
+      - --concurrency=1
+
+    environment:
+      CELERY_BROKER_URL: amqp://project_hub:${RABBITMQ_PASSWORD}@rabbitmq:5672/project_hub
+
+    depends_on:
+      - rabbitmq
+
+    restart: unless-stopped
+
+
+  rabbitmq:
+    image: rabbitmq:4-management-alpine
+    container_name: project-hub-rabbitmq
+
+    environment:
+      RABBITMQ_DEFAULT_USER: project_hub
+      RABBITMQ_DEFFAULT_PASS: ${RABBITMQ_PASSWORD}
+      RABBITMQ_DEFAULT_VHOST: project_hub
+
+    volumes:
+      - project_hub_rabbitmqdata:/var/lib/rabbitmq
+
+    ports:
+      - "127.0.0.1:5672:15672"
+
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+    restart: unless-stopped
+
 
 volumes:
   project_hub_pgdata:
   project_hub_redisdata:
+  project_hun_rabbitmqdata:

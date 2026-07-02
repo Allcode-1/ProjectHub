@@ -18,5 +18,7 @@ class Settings(BaseSettings):
     auth_jwt: Auth_JWT = Auth_JWT()
     redis_url: str = "redis://localhost:6390/0"
 
+    celery_broker_url: str = "amqp://guest:guest@localhost:5672//"
+
 
 settings = Settings()
