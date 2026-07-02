@@ -31,9 +31,7 @@ def synchronize_sprint_lifecycle(
         db.scalars(
             update(Sprint)
             .where(
-                Sprint.status.in_(
-                    (SprintStatus.PLANNED, SprintStatus.ACTIVE)
-                ),
+                Sprint.status.in_((SprintStatus.PLANNED, SprintStatus.ACTIVE)),
                 Sprint.ends_at.is_not(None),
                 Sprint.ends_at <= now,
             )
@@ -65,9 +63,7 @@ def synchronize_sprint_lifecycle(
     return SprintLifecycleResult(
         started=len(started_project_ids),
         closed=len(closed_project_ids),
-        project_ids=frozenset(
-            started_project_ids + closed_project_ids
-        ),
+        project_ids=frozenset(started_project_ids + closed_project_ids),
     )
 
 

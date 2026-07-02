@@ -18,7 +18,9 @@ class Project(Base):
     __tablename__ = "projects"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    owner_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="RESTRICT"), nullable=False)
+    owner_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
+    )
     name: Mapped[str] = mapped_column(String(55), nullable=False)
     description: Mapped[str | None] = mapped_column(String(255), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
@@ -30,9 +32,7 @@ class Project(Base):
     )
 
     project_invites: Mapped[list["ProjectInvite"]] = relationship(
-        back_populates="project",
-        cascade="all, delete-orphan",
-        passive_deletes=True
+        back_populates="project", cascade="all, delete-orphan", passive_deletes=True
     )
 
     owner: Mapped["User"] = relationship(back_populates="projects")

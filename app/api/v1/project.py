@@ -32,7 +32,7 @@ def add_project_router(
     payload: ProjectCreate,
     user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
-    project_cache: ProjectCache = Depends(get_project_cache)
+    project_cache: ProjectCache = Depends(get_project_cache),
 ):
 
     return create_project(payload, user, db, project_cache)
@@ -62,7 +62,7 @@ def delete_project_router(
     project: Project = Depends(require_can_manage_sprints),
     user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
-    project_cache: ProjectCache = Depends(get_project_cache)
+    project_cache: ProjectCache = Depends(get_project_cache),
 ):
 
     return delete_project(project, user, db, project_cache)
@@ -74,7 +74,7 @@ def update_project_router(
     project: Project = Depends(require_can_manage_sprints),
     user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
-    project_cache: ProjectCache = Depends(get_project_cache)
+    project_cache: ProjectCache = Depends(get_project_cache),
 ):
 
     return update_project(payload, project, user, db, project_cache)

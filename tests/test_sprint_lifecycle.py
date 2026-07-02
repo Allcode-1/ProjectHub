@@ -108,8 +108,7 @@ def test_synchronize_sprint_lifecycle_is_idempotent(
 
     assert _get_sprint(db_session, due_to_start.id).status == SprintStatus.ACTIVE
     assert (
-        _get_sprint(db_session, another_due_to_start.id).status
-        == SprintStatus.ACTIVE
+        _get_sprint(db_session, another_due_to_start.id).status == SprintStatus.ACTIVE
     )
 
     closed_sprint = _get_sprint(db_session, due_to_close.id)
@@ -120,10 +119,7 @@ def test_synchronize_sprint_lifecycle_is_idempotent(
     assert expired_planned_sprint.status == SprintStatus.CLOSED
     assert expired_planned_sprint.closed_at == now
 
-    assert (
-        _get_sprint(db_session, future_sprint.id).status
-        == SprintStatus.PLANNED
-    )
+    assert _get_sprint(db_session, future_sprint.id).status == SprintStatus.PLANNED
 
     unchanged_closed_sprint = _get_sprint(db_session, already_closed.id)
     assert unchanged_closed_sprint.status == SprintStatus.CLOSED
@@ -137,9 +133,7 @@ def test_synchronize_sprint_lifecycle_is_idempotent(
 
 
 def test_celery_schedules_sprint_lifecycle_every_minute():
-    schedule = celery_app.conf.beat_schedule[
-        "sync-sprint-lifecycle-every-minute"
-    ]
+    schedule = celery_app.conf.beat_schedule["sync-sprint-lifecycle-every-minute"]
 
     assert schedule["task"] == "project_hub.sprints.sync_lifecycle"
     assert schedule["schedule"] == 60.0

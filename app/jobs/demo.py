@@ -14,5 +14,3 @@ def add(x: int, y: int) -> int:
     print(f"Task finished: result={result}", flush=True)
 
     return result
-
-    

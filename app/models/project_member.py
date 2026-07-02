@@ -27,7 +27,9 @@ class ProjectMember(Base):
     project_id: Mapped[int] = mapped_column(
         ForeignKey("projects.id", ondelete="CASCADE"), nullable=False
     )
-    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
     role: Mapped[ProjectInviteAccessLevel] = mapped_column(
         SAEnum(
             ProjectInviteAccessLevel,

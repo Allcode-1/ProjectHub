@@ -26,8 +26,12 @@ class Task(Base):
     sprint_id: Mapped[int] = mapped_column(
         ForeignKey("sprints.id", ondelete="CASCADE"), nullable=False
     )
-    creator_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
-    worker_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    creator_id: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    worker_id: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
     title: Mapped[str] = mapped_column(String(55), nullable=False)
     description: Mapped[str | None] = mapped_column(String(255), nullable=True)
 

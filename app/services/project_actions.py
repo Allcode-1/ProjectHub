@@ -16,7 +16,9 @@ def _project_cache_user_ids(
     project: Project,
 ) -> set[int]:
     user_ids = {project.owner_id}
-    user_ids.update(member.id for member in project_repo.list_project_members(project.id))
+    user_ids.update(
+        member.id for member in project_repo.list_project_members(project.id)
+    )
     return user_ids
 
 

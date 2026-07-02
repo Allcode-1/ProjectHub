@@ -141,7 +141,6 @@ These are known hardening areas, not new domain features:
 - Sprint transition checks are less strict than task transition checks.
 - Review comments are currently returned only while their task is
   `REJECTED`.
-- Background jobs, Docker, CI, and observability are not implemented yet.
 
 ## Planned Direction
 

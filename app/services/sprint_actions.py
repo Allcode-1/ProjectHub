@@ -17,7 +17,11 @@ from app.cache.sprint import SprintCache
 
 
 def create_sprint(
-    payload: SprintCreate, project: Project, user: User, db: Session, sprint_cache: SprintCache
+    payload: SprintCreate,
+    project: Project,
+    user: User,
+    db: Session,
+    sprint_cache: SprintCache,
 ) -> Sprint:
 
     sprint_repo = SprintRepository(db)
@@ -43,7 +47,12 @@ def create_sprint(
 
 
 def update_sprint(
-    payload: SprintUpdate, project: Project, sprint: Sprint, user: User, db: Session, sprint_cache: SprintCache
+    payload: SprintUpdate,
+    project: Project,
+    sprint: Sprint,
+    user: User,
+    db: Session,
+    sprint_cache: SprintCache,
 ) -> Sprint:
 
     if not can_manage_sprints(db, user, project):
@@ -63,7 +72,9 @@ def update_sprint(
     return sprint
 
 
-def delete_sprint(project: Project, sprint: Sprint, user: User, db: Session, sprint_cache: SprintCache) -> None:
+def delete_sprint(
+    project: Project, sprint: Sprint, user: User, db: Session, sprint_cache: SprintCache
+) -> None:
 
     if not can_manage_sprints(db, user, project):
         raise HTTPException(
@@ -78,7 +89,9 @@ def delete_sprint(project: Project, sprint: Sprint, user: User, db: Session, spr
     return None
 
 
-def start_sprint(project: Project, sprint: Sprint, user: User, db: Session, sprint_cache: SprintCache) -> Sprint:
+def start_sprint(
+    project: Project, sprint: Sprint, user: User, db: Session, sprint_cache: SprintCache
+) -> Sprint:
 
     if not can_manage_sprints(db, user, project):
         raise HTTPException(
@@ -103,7 +116,9 @@ def start_sprint(project: Project, sprint: Sprint, user: User, db: Session, spri
     return sprint
 
 
-def close_sprint(project: Project, sprint: Sprint, user: User, db: Session, sprint_cache: SprintCache) -> Sprint:
+def close_sprint(
+    project: Project, sprint: Sprint, user: User, db: Session, sprint_cache: SprintCache
+) -> Sprint:
 
     if not can_manage_sprints(db, user, project):
         raise HTTPException(
