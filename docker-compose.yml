@@ -45,6 +45,8 @@ services:
       - --loglevel=INFO
       - --pool=prefork
       - --concurrency=1
+      - --without-mingle
+      - --without-gossip
 
     environment:
       CELERY_BROKER_URL: amqp://project_hub:${RABBITMQ_PASSWORD}@rabbitmq:5672/project_hub

@@ -20,5 +20,7 @@ celery_app.conf.update(
     timezone="UTC",
     enable_utc=True,
 
-    broker_connection_retry_on_startup=True
+    broker_connection_retry_on_startup=True,
+
+    worker_enable_remote_control=False,
 )
