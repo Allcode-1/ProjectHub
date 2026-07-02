@@ -7,20 +7,24 @@ celery_app = Celery(
     "project_hub",
     broker=settings.celery_broker_url,
     include=[
-        "app.jobs.demo"
-    ]
+        "app.jobs.demo",
+        "app.jobs.sprint_lifecycle",
+    ],
 )
 
 celery_app.conf.update(
     task_serializer="json",
     accept_content=["json"],
-
     task_ignore_result=True,
-
     timezone="UTC",
     enable_utc=True,
-
     broker_connection_retry_on_startup=True,
-
     worker_enable_remote_control=False,
+    beat_schedule={
+        "sync-sprint-lifecycle-every-minute": {
+            "task": "project_hub.sprints.sync_lifecycle",
+            "schedule": 60.0,
+            "options": {"expires": 55},
+        },
+    },
 )

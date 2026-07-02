@@ -38,6 +38,7 @@ services:
     command:
       - uv
       - run
+      - --no-sync
       - celery
       - -A
       - app.jobs.celery_app:celery_app
@@ -49,9 +50,40 @@ services:
       - --without-gossip
 
     environment:
+      DATABASE_URL: postgresql+psycopg://postgres:postgres@db:5432/project_hub
+      REDIS_URL: redis://redis:6379/0
       CELERY_BROKER_URL: amqp://project_hub:${RABBITMQ_PASSWORD}@rabbitmq:5672/project_hub
 
     depends_on:
+      - db
+      - redis
+      - rabbitmq
+
+    restart: unless-stopped
+
+  beat:
+    build: .
+    container_name: project-hub-beat
+
+    command:
+      - uv
+      - run
+      - --no-sync
+      - celery
+      - -A
+      - app.jobs.celery_app:celery_app
+      - beat
+      - --loglevel=INFO
+      - --schedule=/tmp/celerybeat-schedule
+
+    environment:
+      DATABASE_URL: postgresql+psycopg://postgres:postgres@db:5432/project_hub
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: amqp://project_hub:${RABBITMQ_PASSWORD}@rabbitmq:5672/project_hub
+
+    depends_on:
+      - db
+      - redis
       - rabbitmq
 
     restart: unless-stopped
