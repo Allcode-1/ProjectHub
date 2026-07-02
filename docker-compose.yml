@@ -61,14 +61,14 @@ services:
 
     environment:
       RABBITMQ_DEFAULT_USER: project_hub
-      RABBITMQ_DEFFAULT_PASS: ${RABBITMQ_PASSWORD}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
       RABBITMQ_DEFAULT_VHOST: project_hub
 
     volumes:
       - project_hub_rabbitmqdata:/var/lib/rabbitmq
 
     ports:
-      - "127.0.0.1:5672:15672"
+      - "127.0.0.1:15672:15672"
 
     healthcheck:
       test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
@@ -82,4 +82,4 @@ services:
 volumes:
   project_hub_pgdata:
   project_hub_redisdata:
-  project_hun_rabbitmqdata:
+  project_hub_rabbitmqdata:
