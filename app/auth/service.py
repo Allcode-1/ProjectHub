@@ -1,6 +1,5 @@
 from datetime import datetime, timezone
 
-from fastapi import HTTPException, status
 from jwt.exceptions import InvalidTokenError
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -8,15 +7,13 @@ from sqlalchemy.orm import Session
 from app.auth import utils as auth_utils
 from app.auth.schemas import TokenPair, UserCreate
 from app.auth.tokens import create_access_token, create_refresh_token
+from app.core.errors import AppError
 from app.models.refresh_session import RefreshSession
 from app.models.user import User
 
 
-def _invalid_token_error() -> HTTPException:
-    return HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Invalid token",
-    )
+def _invalid_token_error() -> AppError:
+    return AppError(401, "Invalid token")
 
 
 def _decode_refresh_payload(refresh_token: str) -> dict:
@@ -63,18 +60,12 @@ def register_user(payload: UserCreate, db: Session) -> User:
     existing_user = db.scalar(select(User).where(User.username == payload.username))
 
     if existing_user:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Username or email are already taken",
-        )
+        raise AppError(409, "Username or email are already taken")
 
     existing_email = db.scalar(select(User).where(User.email == payload.email))
 
     if existing_email:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Username or email are already taken",
-        )
+        raise AppError(409, "Username or email are already taken")
 
     user = User(
         username=payload.username,
@@ -93,23 +84,13 @@ def authenticate_user(username: str, password: str, db: Session) -> User:
     user = db.scalar(select(User).where(User.username == username))
 
     if not user:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Profile not found",
-        )
+        raise AppError(401, "Profile not found")
 
     if not auth_utils.validate_password(password, user.hashed_password):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            headers={"WWW-Authenticate": "Bearer"},
-            detail="Invalid credentials",
-        )
+        raise AppError(401, "Invalid credentials")
 
     if not user.is_active:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="User inactive",
-        )
+        raise AppError(403, "User inactive")
 
     return user
 

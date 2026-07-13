@@ -1,6 +1,6 @@
-from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
+from app.core.errors import AppError
 from app.models.user import User
 from app.models.project import Project
 
@@ -52,9 +52,7 @@ def update_project(
 ) -> Project:
 
     if project.owner_id != user.id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="Not enough rights"
-        )
+        raise AppError(403, "Not enough rights")
 
     project_repo = ProjectRepository(db)
     affected_user_ids = _project_cache_user_ids(project_repo, project)
@@ -80,9 +78,7 @@ def delete_project(
 ) -> None:
 
     if project.owner_id != user.id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="Not enough rights"
-        )
+        raise AppError(403, "Not enough rights")
 
     project_repo = ProjectRepository(db)
     affected_user_ids = _project_cache_user_ids(project_repo, project)

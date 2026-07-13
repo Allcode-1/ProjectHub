@@ -1,6 +1,6 @@
-from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
+from app.core.errors import AppError
 from app.models.task import Task, TaskStatus
 from app.models.user import User
 from app.models.project import Project
@@ -26,9 +26,7 @@ def add_task(
     if payload.worker_id is not None:
         worker = project_repo.project_worker_by_id(project.id, payload.worker_id)
         if worker is None:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="Worker not found"
-            )
+            raise AppError(404, "Worker not found")
 
     task = task_repo.create(
         project_id=project.id,
@@ -56,9 +54,7 @@ def update_task(
 ) -> Task:
 
     if not can_manage_sprints(db, user, project):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="Not enough rights"
-        )
+        raise AppError(403, "Not enough rights")
 
     updated_fields = payload.model_dump(exclude_unset=True)
 
@@ -67,9 +63,7 @@ def update_task(
         project_repo = ProjectRepository(db)
         worker = project_repo.project_worker_by_id(project.id, worker_id)
         if worker is None:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="Worker not found"
-            )
+            raise AppError(404, "Worker not found")
 
     for field, value in updated_fields.items():
         setattr(task, field, value)
@@ -83,9 +77,7 @@ def update_task(
 def delete_task(project: Project, task: Task, user: User, db: Session) -> None:
 
     if not can_manage_sprints(db, user, project):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="Not enough rights"
-        )
+        raise AppError(403, "Not enough rights")
 
     db.delete(task)
     db.commit()
@@ -96,15 +88,10 @@ def delete_task(project: Project, task: Task, user: User, db: Session) -> None:
 def take_task_to_work(task: Task, user: User, db: Session) -> Task:
 
     if task.status != TaskStatus.TODO:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT, detail="Task is not available"
-        )
+        raise AppError(409, "Task is not available")
 
     if task.worker_id is not None and task.worker_id != user.id:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Task is assigned to another worker",
-        )
+        raise AppError(409, "Task is assigned to another worker")
 
     task.worker_id = user.id
     task.status = TaskStatus.IN_PROGRESS
@@ -118,9 +105,7 @@ def take_task_to_work(task: Task, user: User, db: Session) -> Task:
 def send_task_to_review(task: Task, user: User, db: Session) -> Task:
 
     if task.worker_id != user.id or task.status != TaskStatus.IN_PROGRESS:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT, detail="Can't send task to review"
-        )
+        raise AppError(409, "Can't send task to review")
 
     task.status = TaskStatus.REVIEW
 
@@ -133,9 +118,7 @@ def send_task_to_review(task: Task, user: User, db: Session) -> Task:
 def accept_task_review(task: Task, user: User, db: Session) -> Task:
 
     if task.worker_id == user.id or task.status != TaskStatus.REVIEW:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT, detail="Task need to be on review"
-        )
+        raise AppError(409, "Task need to be on review")
 
     task.status = TaskStatus.DONE
 
@@ -153,9 +136,7 @@ def decline_task_review(
 ) -> Task:
 
     if task.worker_id == user.id or task.status != TaskStatus.REVIEW:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT, detail="Task need to be on review"
-        )
+        raise AppError(409, "Task need to be on review")
 
     if payload is not None and payload.comment is not None:
         review_comment_repo = ReviewCommentRepository(db)
@@ -176,10 +157,7 @@ def decline_task_review(
 def renew_task(task: Task, user: User, db: Session) -> Task:
 
     if task.worker_id != user.id or task.status != TaskStatus.REJECTED:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Can't renew task",
-        )
+        raise AppError(409, "Can't renew task")
 
     task.status = TaskStatus.IN_PROGRESS
 

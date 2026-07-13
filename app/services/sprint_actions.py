@@ -1,8 +1,8 @@
 from datetime import datetime, timedelta, timezone
 
-from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
+from app.core.errors import AppError
 from app.models.user import User
 from app.models.project import Project
 from app.models.sprint import Sprint, SprintStatus
@@ -56,9 +56,7 @@ def update_sprint(
 ) -> Sprint:
 
     if not can_manage_sprints(db, user, project):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="Not enough rights"
-        )
+        raise AppError(403, "Not enough rights")
 
     updated_fields = payload.model_dump(exclude_unset=True)
     for field, value in updated_fields.items():
@@ -77,9 +75,7 @@ def delete_sprint(
 ) -> None:
 
     if not can_manage_sprints(db, user, project):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="Not enough rights"
-        )
+        raise AppError(403, "Not enough rights")
 
     db.delete(sprint)
     db.commit()
@@ -94,16 +90,12 @@ def start_sprint(
 ) -> Sprint:
 
     if not can_manage_sprints(db, user, project):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="Not enough rights"
-        )
+        raise AppError(403, "Not enough rights")
 
     now = datetime.now(timezone.utc)
 
     if now > sprint.starts_at:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT, detail="Sprint already started"
-        )
+        raise AppError(409, "Sprint already started")
 
     sprint.starts_at = now
     sprint.status = SprintStatus.ACTIVE
@@ -121,9 +113,7 @@ def close_sprint(
 ) -> Sprint:
 
     if not can_manage_sprints(db, user, project):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="Not enough rights"
-        )
+        raise AppError(403, "Not enough rights")
 
     now = datetime.now(timezone.utc)
 

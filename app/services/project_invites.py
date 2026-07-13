@@ -1,8 +1,8 @@
 from datetime import datetime, timezone
 
-from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
+from app.core.errors import AppError
 from app.models.user import User
 from app.models.project import Project
 from app.models.project_member import ProjectMember
@@ -32,15 +32,10 @@ def invite_to_project_by_id(
     existing_invite = invites_repo.invite_by_user_id(project.id, recipient.id)
 
     if existing_invite:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="User already invited to this project",
-        )
+        raise AppError(409, "User already invited to this project")
 
     if can_view_project(db, recipient, project):
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT, detail="Project member already"
-        )
+        raise AppError(409, "Project member already")
 
     invite = invites_repo.create_invite(
         project.id, user.id, recipient.id, payload.access_level
@@ -64,16 +59,10 @@ def update_invite(
     existing_invite = invites_repo.invite_by_user_id(project.id, recipient.id)
 
     if not existing_invite:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Invite not found",
-        )
+        raise AppError(404, "Invite not found")
 
     if existing_invite.send_by != user.id:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Invite not found",
-        )
+        raise AppError(404, "Invite not found")
 
     updated_fields = payload.model_dump(exclude_unset=True)
 
@@ -93,16 +82,10 @@ def delete_invite(project: Project, user: User, recipient: User, db: Session) ->
     existing_invite = invites_repo.invite_by_user_id(project.id, recipient.id)
 
     if not existing_invite:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Invite not found",
-        )
+        raise AppError(404, "Invite not found")
 
     if existing_invite.send_by != user.id:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Invite not found",
-        )
+        raise AppError(404, "Invite not found")
 
     db.delete(existing_invite)
     db.commit()
@@ -122,15 +105,10 @@ def accept_invite(
     existing_invite = invites_repo.invite_by_id(invite_id)
 
     if not existing_invite or existing_invite.send_to != user.id:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Invite not found",
-        )
+        raise AppError(404, "Invite not found")
 
     if existing_invite.status != ProjectInviteStatus.PENDING:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT, detail="Invite already responced"
-        )
+        raise AppError(409, "Invite already responced")
 
     existing_invite.status = ProjectInviteStatus.ACCEPTED
 
@@ -159,15 +137,10 @@ def decline_invite(invite_id: int, user: User, db: Session) -> ProjectInvite:
     existing_invite = invites_repo.invite_by_id(invite_id)
 
     if not existing_invite or existing_invite.send_to != user.id:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Invite not found",
-        )
+        raise AppError(404, "Invite not found")
 
     if existing_invite.status != ProjectInviteStatus.PENDING:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT, detail="Invite already responced"
-        )
+        raise AppError(409, "Invite already responced")
 
     existing_invite.status = ProjectInviteStatus.DECLINED
 
