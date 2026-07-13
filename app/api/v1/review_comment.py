@@ -1,3 +1,5 @@
+from typing import Annotated
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
@@ -17,13 +19,18 @@ from app.services.review_comments import get_my_review_comments
 
 router = APIRouter()
 
+DbSession = Annotated[Session, Depends(get_db)]
+CurrentUser = Annotated[User, Depends(get_current_active_user)]
+TakeTasksProject = Annotated[Project, Depends(require_can_take_tasks)]
+CurrentSprint = Annotated[Sprint, Depends(get_sprint_by_id_or_404)]
+
 
 @router.get("/my_review_comments", response_model=list[ReviewCommentRead])
 def get_my_review_comments_router(
-    project: Project = Depends(require_can_take_tasks),
-    sprint: Sprint = Depends(get_sprint_by_id_or_404),
-    user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db),
+    project: TakeTasksProject,
+    sprint: CurrentSprint,
+    user: CurrentUser,
+    db: DbSession,
 ):
 
     return get_my_review_comments(project, sprint, user, db)
@@ -32,10 +39,10 @@ def get_my_review_comments_router(
 @router.get("/my_review_comments/{comment_id}", response_model=ReviewCommentRead)
 def get_my_review_comment_router(
     comment_id: int,
-    project: Project = Depends(require_can_take_tasks),
-    sprint: Sprint = Depends(get_sprint_by_id_or_404),
-    user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db),
+    project: TakeTasksProject,
+    sprint: CurrentSprint,
+    user: CurrentUser,
+    db: DbSession,
 ):
 
     review_comment_repo = ReviewCommentRepository(db)

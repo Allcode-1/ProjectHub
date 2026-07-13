@@ -1,3 +1,5 @@
+from typing import Annotated
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
@@ -31,6 +33,12 @@ from app.cache.project import ProjectCache
 
 router = APIRouter()
 
+DbSession = Annotated[Session, Depends(get_db)]
+CurrentUser = Annotated[User, Depends(get_current_active_user)]
+ManageSprintsProject = Annotated[Project, Depends(require_can_manage_sprints)]
+InviteRecipient = Annotated[User, Depends(recipient_by_id_or_404)]
+ProjectCacheDep = Annotated[ProjectCache, Depends(get_project_cache)]
+
 
 @router.post(
     "/projects/{project_id}/invites/users/{recipient_id}",
@@ -39,10 +47,10 @@ router = APIRouter()
 )
 def invite_user_to_project(
     payload: ProjectInviteCreate,
-    recipient: User = Depends(recipient_by_id_or_404),
-    project: Project = Depends(require_can_manage_sprints),
-    user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db),
+    recipient: InviteRecipient,
+    project: ManageSprintsProject,
+    user: CurrentUser,
+    db: DbSession,
 ):
 
     return invite_to_project_by_id(payload, project, user, recipient, db)
@@ -54,10 +62,10 @@ def invite_user_to_project(
 )
 def update_user_invite(
     payload: ProjectInviteUpdate,
-    recipient: User = Depends(recipient_by_id_or_404),
-    project: Project = Depends(require_can_manage_sprints),
-    user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db),
+    recipient: InviteRecipient,
+    project: ManageSprintsProject,
+    user: CurrentUser,
+    db: DbSession,
 ):
 
     return update_invite(payload, project, user, recipient, db)
@@ -68,19 +76,17 @@ def update_user_invite(
     status_code=status.HTTP_204_NO_CONTENT,
 )
 def delete_user_invite(
-    project: Project = Depends(require_can_manage_sprints),
-    recipient: User = Depends(recipient_by_id_or_404),
-    user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db),
+    project: ManageSprintsProject,
+    recipient: InviteRecipient,
+    user: CurrentUser,
+    db: DbSession,
 ):
 
     return delete_invite(project, user, recipient, db)
 
 
 @router.get("/invites", response_model=list[ProjectInviteRead])
-def get_my_invites(
-    user: User = Depends(get_current_active_user), db: Session = Depends(get_db)
-):
+def get_my_invites(user: CurrentUser, db: DbSession):
 
     invites_repo = ProjectInviteRepository(db)
     my_invites = invites_repo.invites_to_user(user.id)
@@ -90,8 +96,8 @@ def get_my_invites(
 @router.get("/invites/{invite_id}", response_model=ProjectInviteRead)
 def get_invite_by_id(
     invite_id: int,
-    user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db),
+    user: CurrentUser,
+    db: DbSession,
 ):
 
     invites_repo = ProjectInviteRepository(db)
@@ -109,9 +115,9 @@ def get_invite_by_id(
 @router.patch("/invites/accept/{invite_id}", response_model=ProjectInviteRead)
 def accept_invite_router(
     invite_id: int,
-    user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db),
-    project_cache: ProjectCache = Depends(get_project_cache),
+    user: CurrentUser,
+    db: DbSession,
+    project_cache: ProjectCacheDep,
 ):
 
     return accept_invite(invite_id, user, db, project_cache)
@@ -120,8 +126,8 @@ def accept_invite_router(
 @router.patch("/invites/decline/{invite_id}", response_model=ProjectInviteRead)
 def decline_invite_router(
     invite_id: int,
-    user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db),
+    user: CurrentUser,
+    db: DbSession,
 ):
 
     return decline_invite(invite_id, user, db)

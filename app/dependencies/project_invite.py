@@ -1,3 +1,5 @@
+from typing import Annotated
+
 from fastapi import Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
@@ -5,10 +7,10 @@ from app.db.session import get_db
 
 from app.repositories.project_invite import ProjectInviteRepository
 
+DbSession = Annotated[Session, Depends(get_db)]
 
-def invite_by_id_or_404(
-    project_id: int, recipient_id: int, db: Session = Depends(get_db)
-):
+
+def invite_by_id_or_404(project_id: int, recipient_id: int, db: DbSession):
 
     project_invite_repo = ProjectInviteRepository(db)
 
@@ -22,7 +24,7 @@ def invite_by_id_or_404(
     return invite
 
 
-def recipient_by_id_or_404(recipient_id: int, db: Session = Depends(get_db)):
+def recipient_by_id_or_404(recipient_id: int, db: DbSession):
 
     project_invite_repo = ProjectInviteRepository(db)
 
@@ -36,7 +38,7 @@ def recipient_by_id_or_404(recipient_id: int, db: Session = Depends(get_db)):
     return recipient
 
 
-def invites_to_user(recipient_id: int, db: Session = Depends(get_db)):
+def invites_to_user(recipient_id: int, db: DbSession):
 
     project_invite_repo = ProjectInviteRepository(db)
 

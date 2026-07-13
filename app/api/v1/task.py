@@ -1,3 +1,5 @@
+from typing import Annotated
+
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 
@@ -26,14 +28,22 @@ from app.dependencies.task import get_task_by_id_or_404
 
 router = APIRouter()
 
+DbSession = Annotated[Session, Depends(get_db)]
+CurrentUser = Annotated[User, Depends(get_current_active_user)]
+ViewProject = Annotated[Project, Depends(require_can_view_project)]
+ManageSprintsProject = Annotated[Project, Depends(require_can_manage_sprints)]
+TakeTasksProject = Annotated[Project, Depends(require_can_take_tasks)]
+CurrentSprint = Annotated[Sprint, Depends(get_sprint_by_id_or_404)]
+CurrentTask = Annotated[Task, Depends(get_task_by_id_or_404)]
+
 
 @router.post("/", response_model=TaskRead, status_code=status.HTTP_201_CREATED)
 def add_task_router(
     payload: TaskCreate,
-    project: Project = Depends(require_can_manage_sprints),
-    sprint: Sprint = Depends(get_sprint_by_id_or_404),
-    user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db),
+    project: ManageSprintsProject,
+    sprint: CurrentSprint,
+    user: CurrentUser,
+    db: DbSession,
 ):
 
     return add_task(payload, project, sprint, user, db)
@@ -41,10 +51,10 @@ def add_task_router(
 
 @router.get("/", response_model=list[TaskRead])
 def get_tasks_router(
-    project: Project = Depends(require_can_view_project),
-    sprint: Sprint = Depends(get_sprint_by_id_or_404),
-    user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db),
+    project: ViewProject,
+    sprint: CurrentSprint,
+    user: CurrentUser,
+    db: DbSession,
 ):
 
     task_repo = TaskRepository(db)
@@ -54,10 +64,10 @@ def get_tasks_router(
 
 @router.get("/todo", response_model=list[TaskRead])
 def get_tasks_todo(
-    project: Project = Depends(require_can_view_project),
-    sprint: Sprint = Depends(get_sprint_by_id_or_404),
-    user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db),
+    project: ViewProject,
+    sprint: CurrentSprint,
+    user: CurrentUser,
+    db: DbSession,
 ):
 
     task_repo = TaskRepository(db)
@@ -67,10 +77,10 @@ def get_tasks_todo(
 
 @router.get("/in_progress", response_model=list[TaskRead])
 def get_tasks_in_progress(
-    project: Project = Depends(require_can_view_project),
-    sprint: Sprint = Depends(get_sprint_by_id_or_404),
-    user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db),
+    project: ViewProject,
+    sprint: CurrentSprint,
+    user: CurrentUser,
+    db: DbSession,
 ):
 
     task_repo = TaskRepository(db)
@@ -80,10 +90,10 @@ def get_tasks_in_progress(
 
 @router.get("/on_review", response_model=list[TaskRead])
 def get_tasks_on_review(
-    project: Project = Depends(require_can_view_project),
-    sprint: Sprint = Depends(get_sprint_by_id_or_404),
-    user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db),
+    project: ViewProject,
+    sprint: CurrentSprint,
+    user: CurrentUser,
+    db: DbSession,
 ):
 
     task_repo = TaskRepository(db)
@@ -93,10 +103,10 @@ def get_tasks_on_review(
 
 @router.get("/done", response_model=list[TaskRead])
 def get_tasks_done(
-    project: Project = Depends(require_can_view_project),
-    sprint: Sprint = Depends(get_sprint_by_id_or_404),
-    user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db),
+    project: ViewProject,
+    sprint: CurrentSprint,
+    user: CurrentUser,
+    db: DbSession,
 ):
 
     task_repo = TaskRepository(db)
@@ -106,10 +116,10 @@ def get_tasks_done(
 
 @router.get("/rejected", response_model=list[TaskRead])
 def get_tasks_rejected(
-    project: Project = Depends(require_can_view_project),
-    sprint: Sprint = Depends(get_sprint_by_id_or_404),
-    user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db),
+    project: ViewProject,
+    sprint: CurrentSprint,
+    user: CurrentUser,
+    db: DbSession,
 ):
 
     task_repo = TaskRepository(db)
@@ -119,10 +129,10 @@ def get_tasks_rejected(
 
 @router.get("/mine", response_model=list[TaskRead])
 def get_my_created_tasks(
-    project: Project = Depends(require_can_manage_sprints),
-    sprint: Sprint = Depends(get_sprint_by_id_or_404),
-    user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db),
+    project: ManageSprintsProject,
+    sprint: CurrentSprint,
+    user: CurrentUser,
+    db: DbSession,
 ):
 
     task_repo = TaskRepository(db)
@@ -132,10 +142,10 @@ def get_my_created_tasks(
 
 @router.get("/my_workspace", response_model=list[TaskRead])
 def get_my_workspace_tasks(
-    project: Project = Depends(require_can_take_tasks),
-    sprint: Sprint = Depends(get_sprint_by_id_or_404),
-    user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db),
+    project: TakeTasksProject,
+    sprint: CurrentSprint,
+    user: CurrentUser,
+    db: DbSession,
 ):
 
     task_repo = TaskRepository(db)
@@ -145,11 +155,11 @@ def get_my_workspace_tasks(
 
 @router.get("/{task_id}", response_model=TaskRead)
 def get_task_router(
-    project: Project = Depends(require_can_view_project),
-    sprint: Sprint = Depends(get_sprint_by_id_or_404),
-    task: Task = Depends(get_task_by_id_or_404),
-    user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db),
+    project: ViewProject,
+    sprint: CurrentSprint,
+    task: CurrentTask,
+    user: CurrentUser,
+    db: DbSession,
 ):
 
     return task
@@ -157,11 +167,11 @@ def get_task_router(
 
 @router.delete("/{task_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_task_router(
-    project: Project = Depends(require_can_manage_sprints),
-    sprint: Sprint = Depends(get_sprint_by_id_or_404),
-    task: Task = Depends(get_task_by_id_or_404),
-    user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db),
+    project: ManageSprintsProject,
+    sprint: CurrentSprint,
+    task: CurrentTask,
+    user: CurrentUser,
+    db: DbSession,
 ):
 
     return delete_task(project, task, user, db)
@@ -170,11 +180,11 @@ def delete_task_router(
 @router.patch("/{task_id}", response_model=TaskRead)
 def update_task_router(
     payload: TaskUpdate,
-    project: Project = Depends(require_can_manage_sprints),
-    sprint: Sprint = Depends(get_sprint_by_id_or_404),
-    task: Task = Depends(get_task_by_id_or_404),
-    user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db),
+    project: ManageSprintsProject,
+    sprint: CurrentSprint,
+    task: CurrentTask,
+    user: CurrentUser,
+    db: DbSession,
 ):
 
     return update_task(payload, project, task, user, db)

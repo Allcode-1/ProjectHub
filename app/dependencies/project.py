@@ -1,3 +1,5 @@
+from typing import Annotated
+
 from fastapi import Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
@@ -13,8 +15,11 @@ from app.services.project_membership import (
     can_view_project,
 )
 
+DbSession = Annotated[Session, Depends(get_db)]
+CurrentUser = Annotated[User, Depends(get_current_active_user)]
 
-def get_project_by_id_or_404(project_id: int, db: Session = Depends(get_db)):
+
+def get_project_by_id_or_404(project_id: int, db: DbSession):
 
     project_repo = ProjectRepository(db)
 
@@ -28,10 +33,13 @@ def get_project_by_id_or_404(project_id: int, db: Session = Depends(get_db)):
     return project
 
 
+ProjectById = Annotated[Project, Depends(get_project_by_id_or_404)]
+
+
 def require_can_view_project(
-    project: Project = Depends(get_project_by_id_or_404),
-    user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db),
+    project: ProjectById,
+    user: CurrentUser,
+    db: DbSession,
 ):
 
     if not can_view_project(db, user, project):
@@ -44,9 +52,9 @@ def require_can_view_project(
 
 
 def require_can_take_tasks(
-    project: Project = Depends(get_project_by_id_or_404),
-    user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db),
+    project: ProjectById,
+    user: CurrentUser,
+    db: DbSession,
 ):
 
     if not can_take_tasks(db, user, project):
@@ -59,9 +67,9 @@ def require_can_take_tasks(
 
 
 def require_can_manage_sprints(
-    project: Project = Depends(get_project_by_id_or_404),
-    user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db),
+    project: ProjectById,
+    user: CurrentUser,
+    db: DbSession,
 ):
 
     if not can_manage_sprints(db, user, project):
@@ -74,7 +82,9 @@ def require_can_manage_sprints(
 
 
 def get_project_worker_id_or_404(
-    project_id: int, user_id: int, db: Session = Depends(get_db)
+    project_id: int,
+    user_id: int,
+    db: DbSession,
 ):
 
     project_repo = ProjectRepository(db)

@@ -1,3 +1,5 @@
+from typing import Annotated
+
 from jwt.exceptions import InvalidTokenError
 
 from fastapi import Depends, HTTPException, status
@@ -12,8 +14,11 @@ from app.db.session import get_db
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
+DbSession = Annotated[Session, Depends(get_db)]
+OAuthToken = Annotated[str, Depends(oauth2_scheme)]
 
-def get_current_token_payload(token: str = Depends(oauth2_scheme)) -> dict:
+
+def get_current_token_payload(token: OAuthToken) -> dict:
 
     try:
         payload = auth_utils.decode_jwt(token=token)
@@ -30,8 +35,12 @@ def get_current_token_payload(token: str = Depends(oauth2_scheme)) -> dict:
     return payload
 
 
+TokenPayload = Annotated[dict, Depends(get_current_token_payload)]
+
+
 def get_current_user(
-    payload: dict = Depends(get_current_token_payload), db: Session = Depends(get_db)
+    payload: TokenPayload,
+    db: DbSession,
 ) -> User:
 
     user_id = payload.get("sub")
@@ -56,8 +65,11 @@ def get_current_user(
     return user
 
 
+CurrentUser = Annotated[User, Depends(get_current_user)]
+
+
 def get_current_active_user(
-    user: User = Depends(get_current_user),
+    user: CurrentUser,
 ) -> User:
 
     if not user.is_active:
@@ -68,7 +80,10 @@ def get_current_active_user(
     return user
 
 
-def require_admin(user: User = Depends(get_current_active_user)) -> User:
+ActiveUser = Annotated[User, Depends(get_current_active_user)]
+
+
+def require_admin(user: ActiveUser) -> User:
 
     if user.role != "admin":
         raise HTTPException(

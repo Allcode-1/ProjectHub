@@ -1,3 +1,5 @@
+from typing import Annotated
+
 from fastapi import Depends
 from sqlalchemy.orm import Session
 
@@ -7,9 +9,13 @@ from app.repositories.sprint import SprintRepository
 from app.cache.sprint import SprintCache
 from app.services.sprint_queries import SprintQueryService
 
+DbSession = Annotated[Session, Depends(get_db)]
+SprintCacheDep = Annotated[SprintCache, Depends(get_sprint_cache)]
+
 
 def get_sprint_query_service(
-    db: Session = Depends(get_db), sprint_cache: SprintCache = Depends(get_sprint_cache)
+    db: DbSession,
+    sprint_cache: SprintCacheDep,
 ) -> SprintQueryService:
 
     return SprintQueryService(

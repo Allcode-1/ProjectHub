@@ -1,3 +1,5 @@
+from typing import Annotated
+
 from fastapi import APIRouter, Depends, status, Form, Request
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -17,19 +19,24 @@ from app.dependencies.rate_limiter import get_rate_limiter
 
 router = APIRouter(prefix="/auth", tags=["jwt-based auth"])
 
+DbSession = Annotated[Session, Depends(get_db)]
+CurrentUser = Annotated[User, Depends(get_current_active_user)]
+AdminUser = Annotated[User, Depends(require_admin)]
+RateLimiterDep = Annotated[RateLimiter, Depends(get_rate_limiter)]
+
 
 @router.post("/register", response_model=UserRead, status_code=status.HTTP_201_CREATED)
-def register_user(payload: UserCreate, db: Session = Depends(get_db)):
+def register_user(payload: UserCreate, db: DbSession):
     return auth_service.register_user(payload, db)
 
 
 @router.post("/login", response_model=TokenPair)
 def login_user(
     request: Request,
-    username: str = Form(),
-    password: str = Form(),
-    db: Session = Depends(get_db),
-    rate_limiter: RateLimiter = Depends(get_rate_limiter),
+    username: Annotated[str, Form()],
+    password: Annotated[str, Form()],
+    db: DbSession,
+    rate_limiter: RateLimiterDep,
 ):
 
     client_ip = request.client.host if request.client else "unknown"
@@ -46,20 +53,20 @@ def login_user(
 
 
 @router.post("/logout")
-def logout_user(payload: RefreshToken, db: Session = Depends(get_db)):
+def logout_user(payload: RefreshToken, db: DbSession):
     return auth_service.logout_user(payload.refresh_token, db)
 
 
 @router.get("/users/me", response_model=UserRead)
 def get_me(
-    user: User = Depends(get_current_active_user),
+    user: CurrentUser,
 ):
 
     return user
 
 
 @router.get("/users", response_model=list[UserRead])
-def get_all_users(user: User = Depends(require_admin), db: Session = Depends(get_db)):
+def get_all_users(user: AdminUser, db: DbSession):
 
     users = db.scalars(select(User).order_by(User.id)).all()
 
@@ -67,5 +74,5 @@ def get_all_users(user: User = Depends(require_admin), db: Session = Depends(get
 
 
 @router.post("/refresh", response_model=TokenPair)
-def refresh_tokens(payload: RefreshToken, db: Session = Depends(get_db)):
+def refresh_tokens(payload: RefreshToken, db: DbSession):
     return auth_service.refresh_tokens(payload.refresh_token, db)
