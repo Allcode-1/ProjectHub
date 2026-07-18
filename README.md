@@ -20,6 +20,8 @@ testing.
 - PostgreSQL constraints and indexes for workflow queries.
 - Redis cache-aside for project and sprint lists.
 - Redis-backed login rate limiting.
+- Limit/offset pagination for list endpoints.
+- Redis-backed mutation rate limiting for authenticated write actions.
 - Celery Beat + RabbitMQ sprint lifecycle synchronization.
 - Structured JSON logs for HTTP requests and Celery tasks.
 - Liveness/readiness health endpoints.
@@ -169,11 +171,32 @@ HEALTHCHECK_TIMEOUT_SECONDS=1.0
 Redis is used for:
 
 - cache-aside reads for project and sprint lists;
-- login rate limiting by IP and username.
+- login rate limiting by IP and username;
+- authenticated mutation rate limiting by user and IP.
 
 Cached values are JSON-serialized, validated with Pydantic on read, stored with
-TTL + jitter, and invalidated after key mutations. Cached query failures fall
-back to PostgreSQL.
+TTL + jitter, and invalidated after key mutations. Paginated list pages use
+page-aware cache keys and pattern invalidation for all cached pages belonging to
+the changed project or user. Cached query failures fall back to PostgreSQL.
+
+## Pagination And Limits
+
+List endpoints accept bounded pagination parameters:
+
+```text
+?limit=50&offset=0
+```
+
+Defaults and caps are configurable:
+
+```env
+PAGINATION__DEFAULT_LIMIT=50
+PAGINATION__MAX_LIMIT=100
+```
+
+Auth and write-heavy endpoints are rate limited through Redis. Login uses
+separate IP and username buckets. Authenticated mutations use user and IP
+buckets. `429` responses include `Retry-After`.
 
 ## Celery / Background Jobs
 
@@ -332,6 +355,13 @@ READINESS_REQUIRE_REDIS=true
 READINESS_REQUIRE_RABBITMQ=false
 AUTH_JWT__PRIVATE_KEY_PATH=certs/private.pem
 AUTH_JWT__PUBLIC_KEY_PATH=certs/public.pem
+DATABASE__POOL_SIZE=5
+DATABASE__MAX_OVERFLOW=10
+DATABASE__POOL_TIMEOUT_SECONDS=30
+DATABASE__POOL_RECYCLE_SECONDS=1800
+DATABASE__POOL_PRE_PING=true
+DATABASE__CONNECT_TIMEOUT_SECONDS=5
+DATABASE__STATEMENT_TIMEOUT_MS=30000
 ```
 
 Install dependencies:
@@ -387,6 +417,8 @@ Currently implemented:
 - stricter sprint/task state rules;
 - project member self-leave flow;
 - Redis cache/rate limiting;
+- limit/offset pagination for list endpoints;
+- database pool, pre-ping, connect timeout, and statement timeout settings;
 - Celery sprint lifecycle synchronization;
 - structured JSON logging;
 - liveness/readiness health checks;

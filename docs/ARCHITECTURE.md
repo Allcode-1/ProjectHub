@@ -97,11 +97,13 @@ Example: decline a task with an optional review comment.
 
 Project and sprint list queries use cache-aside behavior:
 
-1. Try to read the list from Redis.
+1. Accept bounded `limit` and `offset` pagination parameters.
+2. Try to read the requested page from Redis.
 2. Validate cached JSON with Pydantic.
 3. On a miss or invalid value, read from PostgreSQL.
 4. Store the serialized response in Redis with TTL and jitter.
-5. On Redis failures, log the error and fall back to PostgreSQL.
+5. Invalidate all cached pages for the affected user or project after writes.
+6. On Redis failures, log the error and fall back to PostgreSQL.
 
 Cache invalidation is performed after mutations that change project or sprint
 list visibility.
@@ -186,8 +188,19 @@ Schema-level guardrails complement service-level validation:
 - Foreign-key delete behavior preserves history where appropriate with
   `SET NULL`, cascades owned children, and restricts project owner deletion.
 
+Runtime database access uses explicit SQLAlchemy pool settings, connection
+pre-ping, pool recycle, connect timeout, and PostgreSQL statement timeout.
+These settings are configured through `DATABASE__...` environment variables.
+
 Alembic migrations are the source of schema history, and CI runs both
 `alembic upgrade head` and `alembic check`.
+
+## Endpoint Limits
+
+List endpoints use bounded `limit`/`offset` pagination. Auth endpoints are
+rate limited by IP, with login also rate limited by username. Authenticated
+state-changing endpoints are rate limited by both user id and client IP.
+Rate-limit responses include `Retry-After`.
 
 ## Observability
 
