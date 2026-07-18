@@ -1,23 +1,20 @@
 from logging.config import fileConfig
-import os
-from dotenv import load_dotenv
 
 from sqlalchemy import engine_from_config
 from sqlalchemy import pool
 
 from alembic import context
 
+from app.core.config import settings
 from app.db.session import Base
 import app.models  # noqa: F401
-
-load_dotenv()
 
 config = context.config
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-database_url = os.getenv("DATABASE_URL")
+database_url = settings.database_url
 if not database_url:
     raise ValueError("database_url is not set")
 

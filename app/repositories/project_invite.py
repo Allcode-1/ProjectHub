@@ -5,6 +5,14 @@ from app.models.user import User
 from app.models.project_invite import ProjectInvite, ProjectInviteStatus
 
 
+def _apply_pagination(statement, limit: int | None, offset: int):
+    if offset:
+        statement = statement.offset(offset)
+    if limit is not None:
+        statement = statement.limit(limit)
+    return statement
+
+
 class ProjectInviteRepository:
     def __init__(self, db: Session):
         self.db = db
@@ -60,9 +68,15 @@ class ProjectInviteRepository:
 
         return self.db.scalar(select(User).where(User.id == recipient_id))
 
-    def invites_to_user(self, recipient_id):
-        return self.db.scalars(
+    def invites_to_user(
+        self, recipient_id: int, limit: int | None = None, offset: int = 0
+    ):
+        statement = (
             select(ProjectInvite)
             .where(ProjectInvite.send_to == recipient_id)
             .order_by(ProjectInvite.id)
+        )
+
+        return self.db.scalars(
+            _apply_pagination(statement, limit, offset)
         ).all()

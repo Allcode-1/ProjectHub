@@ -6,6 +6,14 @@ from sqlalchemy.orm import Session
 from app.models.sprint import Sprint
 
 
+def _apply_pagination(statement, limit: int | None, offset: int):
+    if offset:
+        statement = statement.offset(offset)
+    if limit is not None:
+        statement = statement.limit(limit)
+    return statement
+
+
 class SprintRepository:
     def __init__(self, db: Session):
         self.db = db
@@ -40,8 +48,13 @@ class SprintRepository:
             )
         )
 
-    def all_sprints(self, project_id: int) -> list[Sprint]:
+    def all_sprints(
+        self, project_id: int, limit: int | None = None, offset: int = 0
+    ) -> list[Sprint]:
+        statement = select(Sprint).where(Sprint.project_id == project_id).order_by(
+            Sprint.id
+        )
 
         return list(
-            self.db.scalars(select(Sprint).where(Sprint.project_id == project_id)).all()
+            self.db.scalars(_apply_pagination(statement, limit, offset)).all()
         )
