@@ -42,7 +42,7 @@ def take_task_to_work_router(
     db: DbSession,
 ):
 
-    return take_task_to_work(task, user, db)
+    return take_task_to_work(sprint, task, user, db)
 
 
 @router.patch("/{task_id}/to_review", response_model=TaskRead)
@@ -54,7 +54,7 @@ def send_task_to_review_router(
     db: DbSession,
 ):
 
-    return send_task_to_review(task, user, db)
+    return send_task_to_review(sprint, task, user, db)
 
 
 @router.patch("/{task_id}/accept", response_model=TaskRead)
@@ -66,7 +66,7 @@ def accept_task_review_router(
     db: DbSession,
 ):
 
-    return accept_task_review(task, user, db)
+    return accept_task_review(sprint, task, user, db)
 
 
 @router.patch("/{task_id}/decline", response_model=TaskRead)
@@ -79,7 +79,7 @@ def decline_task_review_router(
     payload: ReviewCommentCreate | None = None,
 ):
 
-    return decline_task_review(payload, task, user, db)
+    return decline_task_review(payload, sprint, task, user, db)
 
 
 @router.patch("/{task_id}/renew", response_model=TaskRead)
@@ -91,4 +91,4 @@ def renew_task_router(
     db: DbSession,
 ):
 
-    return renew_task(task, user, db)
+    return renew_task(sprint, task, user, db)

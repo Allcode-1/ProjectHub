@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 from datetime import datetime
 
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy import String, ForeignKey, DateTime, func
+from sqlalchemy import CheckConstraint, ForeignKey, DateTime, Index, String, func
 
 from app.db.session import Base
 
@@ -16,6 +16,10 @@ if TYPE_CHECKING:
 
 class Project(Base):
     __tablename__ = "projects"
+    __table_args__ = (
+        CheckConstraint("length(name) >= 3", name="ck_projects_name_min_length"),
+        Index("ix_projects_owner_id", "owner_id"),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     owner_id: Mapped[int] = mapped_column(

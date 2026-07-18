@@ -1,4 +1,4 @@
-from sqlalchemy import select
+from sqlalchemy import or_, select, update
 from sqlalchemy.orm import Session
 
 from app.models.task import Task, TaskStatus
@@ -39,6 +39,126 @@ class TaskRepository:
                 Task.id == task_id,
             )
         )
+
+    def lock_task_by_id(
+        self, project_id: int, sprint_id: int, task_id: int
+    ) -> Task | None:
+        return self.db.scalar(
+            select(Task)
+            .where(
+                Task.project_id == project_id,
+                Task.sprint_id == sprint_id,
+                Task.id == task_id,
+            )
+            .with_for_update()
+        )
+
+    def claim_task_for_user(
+        self, project_id: int, sprint_id: int, task_id: int, user_id: int
+    ) -> Task | None:
+        updated_id = self.db.scalar(
+            update(Task)
+            .where(
+                Task.project_id == project_id,
+                Task.sprint_id == sprint_id,
+                Task.id == task_id,
+                Task.status == TaskStatus.TODO,
+                or_(Task.worker_id.is_(None), Task.worker_id == user_id),
+            )
+            .values(worker_id=user_id, status=TaskStatus.IN_PROGRESS)
+            .returning(Task.id)
+        )
+
+        if updated_id is None:
+            return None
+
+        return self.db.get(Task, updated_id, populate_existing=True)
+
+    def send_assigned_task_to_review(
+        self, project_id: int, sprint_id: int, task_id: int, user_id: int
+    ) -> Task | None:
+        updated_id = self.db.scalar(
+            update(Task)
+            .where(
+                Task.project_id == project_id,
+                Task.sprint_id == sprint_id,
+                Task.id == task_id,
+                Task.worker_id == user_id,
+                Task.status == TaskStatus.IN_PROGRESS,
+            )
+            .values(status=TaskStatus.REVIEW)
+            .returning(Task.id)
+        )
+
+        if updated_id is None:
+            return None
+
+        return self.db.get(Task, updated_id, populate_existing=True)
+
+    def accept_reviewed_task(
+        self, project_id: int, sprint_id: int, task_id: int, reviewer_id: int
+    ) -> Task | None:
+        updated_id = self.db.scalar(
+            update(Task)
+            .where(
+                Task.project_id == project_id,
+                Task.sprint_id == sprint_id,
+                Task.id == task_id,
+                Task.worker_id.is_not(None),
+                Task.worker_id != reviewer_id,
+                Task.status == TaskStatus.REVIEW,
+            )
+            .values(status=TaskStatus.DONE)
+            .returning(Task.id)
+        )
+
+        if updated_id is None:
+            return None
+
+        return self.db.get(Task, updated_id, populate_existing=True)
+
+    def decline_reviewed_task(
+        self, project_id: int, sprint_id: int, task_id: int, reviewer_id: int
+    ) -> Task | None:
+        updated_id = self.db.scalar(
+            update(Task)
+            .where(
+                Task.project_id == project_id,
+                Task.sprint_id == sprint_id,
+                Task.id == task_id,
+                Task.worker_id.is_not(None),
+                Task.worker_id != reviewer_id,
+                Task.status == TaskStatus.REVIEW,
+            )
+            .values(status=TaskStatus.REJECTED)
+            .returning(Task.id)
+        )
+
+        if updated_id is None:
+            return None
+
+        return self.db.get(Task, updated_id, populate_existing=True)
+
+    def renew_rejected_task(
+        self, project_id: int, sprint_id: int, task_id: int, user_id: int
+    ) -> Task | None:
+        updated_id = self.db.scalar(
+            update(Task)
+            .where(
+                Task.project_id == project_id,
+                Task.sprint_id == sprint_id,
+                Task.id == task_id,
+                Task.worker_id == user_id,
+                Task.status == TaskStatus.REJECTED,
+            )
+            .values(status=TaskStatus.IN_PROGRESS)
+            .returning(Task.id)
+        )
+
+        if updated_id is None:
+            return None
+
+        return self.db.get(Task, updated_id, populate_existing=True)
 
     def all_tasks_of_sprint(self, project_id: int, sprint_id: int) -> list[Task]:
 

@@ -8,6 +8,7 @@ from sqlalchemy import (
     DateTime,
     Enum as SAEnum,
     ForeignKey,
+    Index,
     func,
 )
 
@@ -27,6 +28,16 @@ class Sprint(Base):
             "ends_at IS NULL OR starts_at IS NULL OR ends_at > starts_at",
             name="ck_sprints_ends_after_starts",
         ),
+        CheckConstraint(
+            "status != 'active' OR starts_at IS NOT NULL",
+            name="ck_sprints_active_has_starts_at",
+        ),
+        CheckConstraint(
+            "status != 'closed' OR closed_at IS NOT NULL",
+            name="ck_sprints_closed_has_closed_at",
+        ),
+        Index("ix_sprints_project_status", "project_id", "status"),
+        Index("ix_sprints_lifecycle", "status", "starts_at", "ends_at"),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)

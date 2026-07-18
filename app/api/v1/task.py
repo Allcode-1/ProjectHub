@@ -174,7 +174,7 @@ def delete_task_router(
     db: DbSession,
 ):
 
-    return delete_task(project, task, user, db)
+    return delete_task(project, sprint, task, user, db)
 
 
 @router.patch("/{task_id}", response_model=TaskRead)
@@ -187,4 +187,4 @@ def update_task_router(
     db: DbSession,
 ):
 
-    return update_task(payload, project, task, user, db)
+    return update_task(payload, project, sprint, task, user, db)

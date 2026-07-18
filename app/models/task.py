@@ -1,7 +1,15 @@
 from enum import Enum
 
 from datetime import datetime
-from sqlalchemy import String, DateTime, func, Enum as SAEnum, ForeignKey
+from sqlalchemy import (
+    CheckConstraint,
+    String,
+    DateTime,
+    func,
+    Enum as SAEnum,
+    ForeignKey,
+    Index,
+)
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.session import Base
@@ -17,6 +25,13 @@ class TaskStatus(str, Enum):
 
 class Task(Base):
     __tablename__ = "tasks"
+    __table_args__ = (
+        CheckConstraint("length(title) >= 3", name="ck_tasks_title_min_length"),
+        Index("ix_tasks_project_sprint_status", "project_id", "sprint_id", "status"),
+        Index("ix_tasks_worker_status", "worker_id", "status"),
+        Index("ix_tasks_project_worker_status", "project_id", "worker_id", "status"),
+        Index("ix_tasks_project_sprint_worker", "project_id", "sprint_id", "worker_id"),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
 

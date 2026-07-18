@@ -2,7 +2,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models.user import User
-from app.models.project_invite import ProjectInvite
+from app.models.project_invite import ProjectInvite, ProjectInviteStatus
 
 
 class ProjectInviteRepository:
@@ -23,18 +23,36 @@ class ProjectInviteRepository:
         self.db.add(project_invite)
         return project_invite
 
-    def invite_by_id(self, invite_id) -> ProjectInvite:
+    def invite_by_id(self, invite_id) -> ProjectInvite | None:
 
         return self.db.scalar(
             select(ProjectInvite).where(ProjectInvite.id == invite_id)
         )
 
-    def invite_by_user_id(self, project_id, recipient_id) -> ProjectInvite:
+    def lock_invite_by_id(self, invite_id: int) -> ProjectInvite | None:
+        return self.db.scalar(
+            select(ProjectInvite)
+            .where(ProjectInvite.id == invite_id)
+            .with_for_update()
+        )
+
+    def invite_by_user_id(self, project_id, recipient_id) -> ProjectInvite | None:
 
         return self.db.scalar(
             select(ProjectInvite).where(
                 ProjectInvite.project_id == project_id,
                 ProjectInvite.send_to == recipient_id,
+            )
+        )
+
+    def pending_invite_by_user_id(
+        self, project_id: int, recipient_id: int
+    ) -> ProjectInvite | None:
+        return self.db.scalar(
+            select(ProjectInvite).where(
+                ProjectInvite.project_id == project_id,
+                ProjectInvite.send_to == recipient_id,
+                ProjectInvite.status == ProjectInviteStatus.PENDING,
             )
         )
 

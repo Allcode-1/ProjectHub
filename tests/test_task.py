@@ -1,6 +1,13 @@
+from datetime import datetime, timedelta, timezone
+
 from sqlalchemy import select
 
+from app.models.project import Project
 from app.models.review_comment import ReviewComment
+from app.models.sprint import Sprint
+from app.models.task import Task
+from app.models.user import User
+from app.repositories.task import TaskRepository
 
 from tests.helpers import (
     auth_headers,
@@ -305,3 +312,146 @@ def test_viewer_cannot_take_task(client):
     )
 
     assert response.status_code == 403
+
+
+def test_second_worker_cannot_claim_already_claimed_task(client):
+    owner_tokens, worker, worker_tokens, project, sprint = setup_project_with_worker(
+        client
+    )
+    other_worker, other_worker_tokens = register_and_login(client, username="worker2")
+    invite_and_accept_member(
+        client,
+        owner_tokens["access_token"],
+        other_worker_tokens["access_token"],
+        project["id"],
+        other_worker["id"],
+        access_level="worker",
+    )
+    task = create_task(
+        client,
+        owner_tokens["access_token"],
+        project["id"],
+        sprint["id"],
+    )
+
+    first_response = client.patch(
+        f"/api/v1/projects/{project['id']}/sprints/{sprint['id']}/tasks/"
+        f"{task['id']}/take_task",
+        headers=auth_headers(worker_tokens["access_token"]),
+    )
+    second_response = client.patch(
+        f"/api/v1/projects/{project['id']}/sprints/{sprint['id']}/tasks/"
+        f"{task['id']}/take_task",
+        headers=auth_headers(other_worker_tokens["access_token"]),
+    )
+
+    assert worker["id"] != other_worker["id"]
+    assert first_response.status_code == 200
+    assert second_response.status_code == 409
+
+
+def test_non_todo_task_cannot_be_updated_or_deleted(client):
+    owner_tokens, _, worker_tokens, project, sprint = setup_project_with_worker(client)
+    task = create_task(
+        client,
+        owner_tokens["access_token"],
+        project["id"],
+        sprint["id"],
+    )
+    client.patch(
+        f"/api/v1/projects/{project['id']}/sprints/{sprint['id']}/tasks/"
+        f"{task['id']}/take_task",
+        headers=auth_headers(worker_tokens["access_token"]),
+    )
+
+    update_response = client.patch(
+        f"/api/v1/projects/{project['id']}/sprints/{sprint['id']}/tasks/{task['id']}",
+        json={"title": "Late edit"},
+        headers=auth_headers(owner_tokens["access_token"]),
+    )
+    delete_response = client.delete(
+        f"/api/v1/projects/{project['id']}/sprints/{sprint['id']}/tasks/{task['id']}",
+        headers=auth_headers(owner_tokens["access_token"]),
+    )
+
+    assert update_response.status_code == 409
+    assert delete_response.status_code == 409
+
+
+def test_closed_sprint_blocks_task_mutations(client):
+    owner_tokens, _, _, project, sprint = setup_project_with_worker(client)
+    start_response = client.patch(
+        f"/api/v1/projects/{project['id']}/sprints/{sprint['id']}/start",
+        headers=auth_headers(owner_tokens["access_token"]),
+    )
+    close_response = client.patch(
+        f"/api/v1/projects/{project['id']}/sprints/{sprint['id']}/close",
+        headers=auth_headers(owner_tokens["access_token"]),
+    )
+    create_response = client.post(
+        f"/api/v1/projects/{project['id']}/sprints/{sprint['id']}/tasks/",
+        json={"title": "Blocked task", "description": "Closed sprint task"},
+        headers=auth_headers(owner_tokens["access_token"]),
+    )
+
+    assert start_response.status_code == 200
+    assert close_response.status_code == 200
+    assert create_response.status_code == 409
+
+
+def test_task_claim_is_compare_and_set(db_session):
+    owner = User(
+        username="claim-owner",
+        email="claim-owner@example.com",
+        hashed_password="not-used",
+    )
+    first_worker = User(
+        username="claim-worker-1",
+        email="claim-worker-1@example.com",
+        hashed_password="not-used",
+    )
+    second_worker = User(
+        username="claim-worker-2",
+        email="claim-worker-2@example.com",
+        hashed_password="not-used",
+    )
+    db_session.add_all([owner, first_worker, second_worker])
+    db_session.flush()
+
+    project = Project(owner_id=owner.id, name="Claim project", description=None)
+    db_session.add(project)
+    db_session.flush()
+
+    now = datetime.now(timezone.utc)
+    sprint = Sprint(
+        project_id=project.id,
+        creator_id=owner.id,
+        name="Claim sprint",
+        starts_at=now,
+        ends_at=now + timedelta(days=14),
+    )
+    db_session.add(sprint)
+    db_session.flush()
+
+    task = Task(
+        project_id=project.id,
+        sprint_id=sprint.id,
+        creator_id=owner.id,
+        title="Claim task",
+        description=None,
+    )
+    db_session.add(task)
+    db_session.flush()
+
+    task_repo = TaskRepository(db_session)
+
+    first_claim = task_repo.claim_task_for_user(
+        project.id, sprint.id, task.id, first_worker.id
+    )
+    second_claim = task_repo.claim_task_for_user(
+        project.id, sprint.id, task.id, second_worker.id
+    )
+
+    assert first_claim is not None
+    assert first_claim.worker_id == first_worker.id
+    assert second_claim is None

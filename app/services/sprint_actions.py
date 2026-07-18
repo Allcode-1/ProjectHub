@@ -16,6 +16,11 @@ from app.services.project_membership import can_manage_sprints
 from app.cache.sprint import SprintCache
 
 
+def _ensure_sprint_dates(starts_at: datetime | None, ends_at: datetime | None) -> None:
+    if starts_at is not None and ends_at is not None and ends_at <= starts_at:
+        raise AppError(422, "Sprint end must be after start")
+
+
 def create_sprint(
     payload: SprintCreate,
     project: Project,
@@ -28,6 +33,7 @@ def create_sprint(
 
     starts_at = payload.starts_at or datetime.now(timezone.utc)
     ends_at = starts_at + timedelta(days=14)
+    _ensure_sprint_dates(starts_at, ends_at)
 
     sprint = sprint_repo.create(
         project_id=project.id,
@@ -58,7 +64,15 @@ def update_sprint(
     if not can_manage_sprints(db, user, project):
         raise AppError(403, "Not enough rights")
 
+    if sprint.status == SprintStatus.CLOSED:
+        raise AppError(409, "Closed sprint cannot be updated")
+
     updated_fields = payload.model_dump(exclude_unset=True)
+
+    next_starts_at = updated_fields.get("starts_at", sprint.starts_at)
+    next_ends_at = updated_fields.get("ends_at", sprint.ends_at)
+    _ensure_sprint_dates(next_starts_at, next_ends_at)
+
     for field, value in updated_fields.items():
         setattr(sprint, field, value)
 
@@ -92,10 +106,13 @@ def start_sprint(
     if not can_manage_sprints(db, user, project):
         raise AppError(403, "Not enough rights")
 
+    if sprint.status != SprintStatus.PLANNED:
+        raise AppError(409, "Only planned sprint can be started")
+
     now = datetime.now(timezone.utc)
 
-    if now > sprint.starts_at:
-        raise AppError(409, "Sprint already started")
+    if sprint.ends_at is not None and sprint.ends_at <= now:
+        raise AppError(409, "Sprint already ended")
 
     sprint.starts_at = now
     sprint.status = SprintStatus.ACTIVE
@@ -114,6 +131,9 @@ def close_sprint(
 
     if not can_manage_sprints(db, user, project):
         raise AppError(403, "Not enough rights")
+
+    if sprint.status != SprintStatus.ACTIVE:
+        raise AppError(409, "Only active sprint can be closed")
 
     now = datetime.now(timezone.utc)
 

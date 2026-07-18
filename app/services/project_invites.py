@@ -1,6 +1,7 @@
 from datetime import datetime, timezone
 
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError
 
 from app.core.errors import AppError
 from app.models.user import User
@@ -15,7 +16,7 @@ from app.schemas.project_invite import ProjectInviteCreate, ProjectInviteUpdate
 
 from app.repositories.project_invite import ProjectInviteRepository
 
-from app.services.project_membership import can_view_project
+from app.services.project_membership import can_view_project, get_project_access
 from app.cache.project import ProjectCache
 
 
@@ -29,7 +30,7 @@ def invite_to_project_by_id(
 
     invites_repo = ProjectInviteRepository(db)
 
-    existing_invite = invites_repo.invite_by_user_id(project.id, recipient.id)
+    existing_invite = invites_repo.pending_invite_by_user_id(project.id, recipient.id)
 
     if existing_invite:
         raise AppError(409, "User already invited to this project")
@@ -41,7 +42,11 @@ def invite_to_project_by_id(
         project.id, user.id, recipient.id, payload.access_level
     )
 
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError as exc:
+        db.rollback()
+        raise AppError(409, "User already invited to this project") from exc
     db.refresh(invite)
     return invite
 
@@ -56,7 +61,7 @@ def update_invite(
 
     invites_repo = ProjectInviteRepository(db)
 
-    existing_invite = invites_repo.invite_by_user_id(project.id, recipient.id)
+    existing_invite = invites_repo.pending_invite_by_user_id(project.id, recipient.id)
 
     if not existing_invite:
         raise AppError(404, "Invite not found")
@@ -79,7 +84,7 @@ def delete_invite(project: Project, user: User, recipient: User, db: Session) ->
 
     invites_repo = ProjectInviteRepository(db)
 
-    existing_invite = invites_repo.invite_by_user_id(project.id, recipient.id)
+    existing_invite = invites_repo.pending_invite_by_user_id(project.id, recipient.id)
 
     if not existing_invite:
         raise AppError(404, "Invite not found")
@@ -102,13 +107,16 @@ def accept_invite(
 
     invites_repo = ProjectInviteRepository(db)
 
-    existing_invite = invites_repo.invite_by_id(invite_id)
+    existing_invite = invites_repo.lock_invite_by_id(invite_id)
 
     if not existing_invite or existing_invite.send_to != user.id:
         raise AppError(404, "Invite not found")
 
     if existing_invite.status != ProjectInviteStatus.PENDING:
         raise AppError(409, "Invite already responced")
+
+    if get_project_access(db, user.id, existing_invite.project_id) is not None:
+        raise AppError(409, "Project member already")
 
     existing_invite.status = ProjectInviteStatus.ACCEPTED
 
@@ -122,7 +130,11 @@ def accept_invite(
     )
 
     db.add(new_project_member)
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError as exc:
+        db.rollback()
+        raise AppError(409, "Project member already") from exc
     db.refresh(existing_invite)
 
     project_cache.invalidate_user_projects(user.id)
@@ -134,7 +146,7 @@ def decline_invite(invite_id: int, user: User, db: Session) -> ProjectInvite:
 
     invites_repo = ProjectInviteRepository(db)
 
-    existing_invite = invites_repo.invite_by_id(invite_id)
+    existing_invite = invites_repo.lock_invite_by_id(invite_id)
 
     if not existing_invite or existing_invite.send_to != user.id:
         raise AppError(404, "Invite not found")

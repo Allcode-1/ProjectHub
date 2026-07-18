@@ -17,16 +17,18 @@ from tests.fakes import InMemoryRedis
 
 
 DATABASE_URL = os.getenv("DATABASE_URL")
-TEST_DATABASE_URL = os.getenv("TEST_DATABASE_URL")
-if not TEST_DATABASE_URL:
+_TEST_DATABASE_URL = os.getenv("TEST_DATABASE_URL")
+if not _TEST_DATABASE_URL:
     raise ValueError("TEST_DATABASE_URL is not set")
+TEST_DATABASE_URL: str = _TEST_DATABASE_URL
 
 
 def validate_test_database_url() -> None:
     test_url = make_url(TEST_DATABASE_URL)
+    database_url = DATABASE_URL
 
-    if DATABASE_URL:
-        main_url = make_url(DATABASE_URL)
+    if database_url:
+        main_url = make_url(database_url)
         if (
             test_url.drivername == main_url.drivername
             and test_url.username == main_url.username

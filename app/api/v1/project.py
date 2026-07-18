@@ -13,6 +13,7 @@ from app.schemas.project import ProjectCreate, ProjectRead, ProjectUpdate
 from app.auth.schemas import UserRead
 
 from app.services.project_actions import create_project, update_project, delete_project
+from app.services.project_members import leave_project
 from app.services.project_queries import ProjectQueryService
 
 from app.repositories.project import ProjectRepository
@@ -100,3 +101,13 @@ def get_project_members(
     project_members = project_repo.list_project_members(project.id)
 
     return project_members
+
+
+@router.delete("/{project_id}/members/me", status_code=status.HTTP_204_NO_CONTENT)
+def leave_project_router(
+    project: ViewProject,
+    user: CurrentUser,
+    db: DbSession,
+    project_cache: ProjectCacheDep,
+):
+    return leave_project(project, user, db, project_cache)

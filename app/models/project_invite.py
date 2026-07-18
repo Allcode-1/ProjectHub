@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING
 
 from enum import Enum
 
-from sqlalchemy import ForeignKey, Enum as SAEnum
+from sqlalchemy import ForeignKey, Enum as SAEnum, Index
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.session import Base
@@ -71,3 +71,18 @@ class ProjectInvite(Base):
         back_populates="received_project_invites",
         foreign_keys=[send_to],
     )
+
+
+Index(
+    "ix_project_invites_pending_project_send_to",
+    ProjectInvite.project_id,
+    ProjectInvite.send_to,
+    unique=True,
+    postgresql_where=ProjectInvite.status == ProjectInviteStatus.PENDING,
+    sqlite_where=ProjectInvite.status == ProjectInviteStatus.PENDING,
+)
+Index(
+    "ix_project_invites_send_to_status",
+    ProjectInvite.send_to,
+    ProjectInvite.status,
+)

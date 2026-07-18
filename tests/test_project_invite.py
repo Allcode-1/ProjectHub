@@ -78,6 +78,33 @@ def test_declined_invite_cannot_be_accepted(client):
     assert accept_response.status_code == 409
 
 
+def test_declined_invite_does_not_block_new_pending_invite(client):
+    _, owner_tokens = register_and_login(client, username="owner")
+    recipient, recipient_tokens = register_and_login(client, username="viewer")
+    project = create_project(client, owner_tokens["access_token"])
+    invite = invite_user(
+        client,
+        owner_tokens["access_token"],
+        project["id"],
+        recipient["id"],
+        access_level="viewer",
+    )
+
+    decline_response = client.patch(
+        f"/api/v1/invites/decline/{invite['id']}",
+        headers=auth_headers(recipient_tokens["access_token"]),
+    )
+    second_invite_response = client.post(
+        f"/api/v1/projects/{project['id']}/invites/users/{recipient['id']}",
+        json={"access_level": "worker"},
+        headers=auth_headers(owner_tokens["access_token"]),
+    )
+
+    assert decline_response.status_code == 200
+    assert second_invite_response.status_code == 201
+    assert second_invite_response.json()["access_level"] == "worker"
+
+
 def test_owner_can_update_and_delete_pending_invite(client):
     _, owner_tokens = register_and_login(client, username="owner")
     recipient, _ = register_and_login(client, username="worker")

@@ -68,3 +68,64 @@ def test_worker_cannot_create_sprint(client):
     )
 
     assert response.status_code == 403
+
+
+def test_sprint_state_machine_rejects_invalid_transitions(client):
+    _, owner_tokens = register_and_login(client, username="owner")
+    project = create_project(client, owner_tokens["access_token"])
+    sprint = create_sprint(
+        client,
+        owner_tokens["access_token"],
+        project["id"],
+        starts_at="2035-01-01T00:00:00Z",
+    )
+
+    close_planned_response = client.patch(
+        f"/api/v1/projects/{project['id']}/sprints/{sprint['id']}/close",
+        headers=auth_headers(owner_tokens["access_token"]),
+    )
+    start_response = client.patch(
+        f"/api/v1/projects/{project['id']}/sprints/{sprint['id']}/start",
+        headers=auth_headers(owner_tokens["access_token"]),
+    )
+    start_again_response = client.patch(
+        f"/api/v1/projects/{project['id']}/sprints/{sprint['id']}/start",
+        headers=auth_headers(owner_tokens["access_token"]),
+    )
+    close_response = client.patch(
+        f"/api/v1/projects/{project['id']}/sprints/{sprint['id']}/close",
+        headers=auth_headers(owner_tokens["access_token"]),
+    )
+    update_closed_response = client.patch(
+        f"/api/v1/projects/{project['id']}/sprints/{sprint['id']}",
+        json={"name": "Should not update"},
+        headers=auth_headers(owner_tokens["access_token"]),
+    )
+
+    assert close_planned_response.status_code == 409
+    assert start_response.status_code == 200
+    assert start_again_response.status_code == 409
+    assert close_response.status_code == 200
+    assert update_closed_response.status_code == 409
+
+
+def test_sprint_update_rejects_invalid_date_range(client):
+    _, owner_tokens = register_and_login(client, username="owner")
+    project = create_project(client, owner_tokens["access_token"])
+    sprint = create_sprint(
+        client,
+        owner_tokens["access_token"],
+        project["id"],
+        starts_at="2035-01-01T00:00:00Z",
+    )
+
+    response = client.patch(
+        f"/api/v1/projects/{project['id']}/sprints/{sprint['id']}",
+        json={
+            "starts_at": "2035-01-10T00:00:00Z",
+            "ends_at": "2035-01-09T00:00:00Z",
+        },
+        headers=auth_headers(owner_tokens["access_token"]),
+    )
+
+    assert response.status_code == 422
