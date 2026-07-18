@@ -292,6 +292,7 @@ Generate JWT keys in `certs/`, then start the stack:
 mkdir -p certs
 openssl genrsa -out certs/private.pem 2048
 openssl rsa -in certs/private.pem -pubout -out certs/public.pem
+chmod 644 certs/private.pem certs/public.pem
 docker compose up -d --build
 ```
 
@@ -300,7 +301,9 @@ one-shot `migrate` service applies Alembic migrations after PostgreSQL becomes
 healthy and before the API, worker, and beat services start.
 
 The API image runs as a non-root user. JWT keys stay outside the image and are
-mounted into API/worker/beat containers as Docker secrets.
+mounted into API/worker/beat containers as Docker secrets. On Linux, the key
+files must be readable by the non-root container user; the `chmod` command above
+keeps the local Compose setup simple for development and CI.
 
 Check the API:
 
