@@ -24,7 +24,7 @@ testing.
 - Structured JSON logs for HTTP requests and Celery tasks.
 - Liveness/readiness health endpoints.
 - Security and dependency audit tooling.
-- GitHub Actions CI quality gates.
+- GitHub Actions CI quality gates and Docker Compose smoke checks.
 - Docker Compose healthchecks, migration startup flow, and JWT key secrets.
 - Load and concurrency smoke scripts for a running API.
 - Pytest integration coverage, Ruff, Mypy, Alembic sync checks.
@@ -223,6 +223,10 @@ docker build -t project-hub:ci .
 The CI job also generates a temporary RS256 key pair and creates separate
 PostgreSQL databases for application migration checks and destructive tests.
 
+A separate Compose smoke job builds and starts the Docker Compose stack, waits
+for `/health/ready`, then runs the live concurrency and read-load smoke scripts
+against `http://localhost:8000`.
+
 ## Testing
 
 Run the main test suite:
@@ -385,6 +389,7 @@ Currently implemented:
 - liveness/readiness health checks;
 - security and dependency audit commands;
 - GitHub Actions CI workflow;
+- Docker Compose smoke job in CI;
 - PostgreSQL constraints/indexes;
 - Alembic migrations;
 - Docker Compose with healthchecks, migration service, and key secrets;

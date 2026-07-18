@@ -2,11 +2,15 @@
 
 ## Overview
 
-ProjectHub is a synchronous FastAPI backend for managing projects, members,
-sprints, tasks, reviews, and project invitations.
+ProjectHub is a synchronous FastAPI backend for Jira-like project management
+workflows: projects, members, invites, sprints, tasks, task reviews, and
+review comments.
 
-PostgreSQL is the source of truth. Redis is currently used for list caching and
-login rate limiting.
+PostgreSQL is the source of truth. Redis supports cache-aside reads and login
+rate limiting. RabbitMQ, Celery worker, and Celery Beat run scheduled sprint
+lifecycle synchronization. Operational concerns are covered by structured
+logging, health/readiness checks, Docker Compose, and GitHub Actions quality
+gates.
 
 ```text
 Client
@@ -20,12 +24,13 @@ FastAPI router
 Service: business rules and transaction boundary
   |
   v
-Repository: SQLAlchemy queries
+Repository: SQLAlchemy queries and conditional updates
   |
   v
 PostgreSQL
 
 Query service -> Redis cache -> Repository fallback
+Celery Beat -> RabbitMQ -> Celery worker -> PostgreSQL/Redis invalidation
 ```
 
 ## Main Components
@@ -33,21 +38,25 @@ Query service -> Redis cache -> Repository fallback
 | Component | Location | Responsibility |
 |---|---|---|
 | API routers | `app/api/v1/` | HTTP contract, dependencies, response models |
-| Auth routes | `app/auth/` | Registration, login, refresh, logout |
-| Dependencies | `app/dependencies/` | Authentication, RBAC, resource loading |
-| Services | `app/services/` | Business actions, state transitions, transactions |
-| Repositories | `app/repositories/` | Database reads and object creation |
-| Models | `app/models/` | SQLAlchemy tables and enums |
+| Auth routes | `app/auth/` | Registration, login, refresh rotation, logout |
+| Dependencies | `app/dependencies/` | Authentication, RBAC, nested resource consistency |
+| Services | `app/services/` | Business actions, workflow state, transactions |
+| Repositories | `app/repositories/` | SQLAlchemy reads, locks, conditional updates |
+| Models | `app/models/` | SQLAlchemy tables, enums, constraints, indexes |
 | Schemas | `app/schemas/` | Pydantic request and response contracts |
 | Cache | `app/cache/` | Redis keys, serialization, TTL, invalidation helpers |
+| Jobs | `app/jobs/` | Celery app and sprint lifecycle task |
+| Core | `app/core/` | Settings, errors, health checks, structured logging |
 | Database | `app/db/` | Engine, sessions, declarative base |
 | Migrations | `alembic/` | Database schema history |
-| Tests | `tests/` | Integration tests for API and domain behavior |
+| Tests | `tests/` | Integration, negative, cache, lifecycle, smoke coverage |
 
 ## Domain Structure
 
 ```text
 Project
+  |
+  +-- has members/invites
   |
   +-- contains -----------> Sprint
                              |
@@ -58,27 +67,31 @@ Project
 
 Important ownership rules:
 
-- A project has one owner.
-- Project membership gives `viewer`, `worker`, or `admin` access.
+- A project has one owner through `projects.owner_id`.
+- Non-owner access is stored in `project_members` with `viewer`, `worker`, or
+  `admin` role.
 - A sprint belongs to one project.
 - A task belongs to one project and one sprint.
 - A review comment belongs to one task.
-- A task worker must be a worker of the same project when assigned through the
-  API.
+- A task worker must belong to the same project when assigned through the API.
+- A project owner cannot leave their own project through member self-leave.
 
 ## Request Flow
 
 ### Command request
 
-Example: decline a task with an optional comment.
+Example: decline a task with an optional review comment.
 
 1. The router authenticates the user.
-2. Dependencies load the project, sprint, and task.
-3. RBAC dependencies require owner/admin access.
-4. The service validates the task state.
-5. The service optionally creates a review comment.
-6. The service changes the task status to `REJECTED`.
-7. Both changes are committed in one database transaction.
+2. Dependencies load project, sprint, and task records.
+3. RBAC dependencies require owner/admin project management access.
+4. Nested dependencies verify that `project_id`, `sprint_id`, and `task_id`
+   describe the same object hierarchy.
+5. The service validates sprint and task workflow state.
+6. The service uses a conditional update so the database verifies the expected
+   current task state.
+7. The service optionally creates a review comment.
+8. The task state change and comment insert are committed in one transaction.
 
 ### Cached query
 
@@ -88,8 +101,36 @@ Project and sprint list queries use cache-aside behavior:
 2. Validate cached JSON with Pydantic.
 3. On a miss or invalid value, read from PostgreSQL.
 4. Store the serialized response in Redis with TTL and jitter.
+5. On Redis failures, log the error and fall back to PostgreSQL.
 
-Cache read/write failures are logged and queries fall back to PostgreSQL.
+Cache invalidation is performed after mutations that change project or sprint
+list visibility.
+
+### Background lifecycle
+
+Celery Beat periodically publishes a sprint lifecycle sync task to RabbitMQ.
+A Celery worker consumes the message and:
+
+1. activates planned sprints whose start time has arrived;
+2. closes planned/active sprints whose end time has passed;
+3. invalidates sprint-list cache keys for affected projects.
+
+### Health/readiness
+
+The API exposes:
+
+```text
+GET /health
+GET /health/live
+GET /health/ready
+```
+
+Liveness confirms the API process is running. Readiness checks runtime
+dependencies:
+
+- PostgreSQL is required.
+- Redis is required by default.
+- RabbitMQ is reported and optional by default for the API process.
 
 ## Authorization Boundaries
 
@@ -97,10 +138,10 @@ Authorization is split into two levels:
 
 - Dependencies check project-level access such as view, task work, or
   management.
-- Services check object-level and workflow rules such as task ownership and
-  current status.
+- Services check object-level and workflow rules such as task assignment,
+  owner-only project changes, original invite sender, and current state.
 
-Resource dependencies also keep nested identifiers consistent:
+Resource dependencies keep nested identifiers consistent:
 
 ```text
 project_id -> sprint.project_id -> task.sprint_id/project_id
@@ -108,46 +149,111 @@ project_id -> sprint.project_id -> task.sprint_id/project_id
 
 Detailed permissions are documented in [RBAC.md](RBAC.md).
 
-## Transactions
+## Transactions And Concurrency
 
-Business services currently own transaction boundaries and call `commit()`
-after successful state changes.
+Business services own transaction boundaries and call `commit()` after
+successful state changes.
 
 Examples:
 
-- Accepting an invite and creating a project member are committed together.
-- Declining a task and creating its optional review comment are committed
-  together.
-- Task status transitions are committed individually.
+- Registration catches unique username/email conflicts and returns `409`.
+- Refresh-token rotation revokes an active refresh session through conditional
+  `UPDATE ... RETURNING`, so one refresh token can be used only once.
+- Logout uses the same active-session revocation pattern.
+- Accepting an invite locks the invite row, changes its status, creates project
+  membership, and commits atomically.
+- Task claiming uses conditional `UPDATE ... WHERE status = TODO ... RETURNING`
+  so concurrent claim attempts produce exactly one winner.
+- Task edit/delete locks the row with `FOR UPDATE` and allows only `TODO`
+  tasks in open sprints.
+- Sprint state transitions are service-validated: planned -> active -> closed.
 
-PostgreSQL remains authoritative even when Redis is unavailable.
+PostgreSQL remains authoritative even when Redis or RabbitMQ is unavailable.
 
-## Authentication
+## Database Hardening
 
-- Access and refresh tokens use JWT.
-- Tokens are signed with RS256 keys.
-- Refresh sessions are persisted in PostgreSQL.
-- Refresh rotation and logout revoke refresh sessions.
-- Login rate limiting uses Redis keys for IP and username.
+Schema-level guardrails complement service-level validation:
 
-## Current Limitations
+- `projects.name` and `tasks.title` have minimum-length check constraints.
+- `sprints` enforce valid date ordering and required timestamps for active and
+  closed states.
+- `project_members` has a unique `(project_id, user_id)` constraint.
+- `project_invites` has a partial unique index for one pending invite per
+  `(project_id, send_to)`.
+- Task workflow queries have indexes by project, sprint, worker, and status.
+- Sprint lifecycle jobs use indexes by project/status and lifecycle timestamps.
+- Refresh sessions are indexed by user and expiration time.
+- Foreign-key delete behavior preserves history where appropriate with
+  `SET NULL`, cascades owned children, and restricts project owner deletion.
 
-These are known hardening areas, not new domain features:
+Alembic migrations are the source of schema history, and CI runs both
+`alembic upgrade head` and `alembic check`.
 
-- Cache invalidation is not complete for every mutation.
-- Rate limiting currently depends on Redis availability.
-- Redis is not fully isolated in the test suite.
-- Some database indexes, constraints, and delete cascades need review.
-- Sprint transition checks are less strict than task transition checks.
-- Review comments are currently returned only while their task is
-  `REJECTED`.
+## Observability
 
-## Planned Direction
+HTTP requests are logged as structured JSON with request id, method, path,
+client IP, status code, and duration. Every response includes `X-Request-ID`.
+If the caller sends this header, the middleware keeps it; otherwise it
+generates a new id.
 
-The next development stage should improve depth:
+Celery tasks log lifecycle events for task start, finish, and failure without
+logging task arguments.
 
-2. Review database constraints, indexes, and cascades.
-3. Complete cache invalidation and Redis fallback behavior.
-4. Expand integration tests and fix test isolation.
-5. Finish typing and naming cleanup.
-6. Add Docker Compose and CI.
+Log level is controlled with:
+
+```env
+LOG_LEVEL=INFO
+```
+
+## Runtime Packaging
+
+The Docker image:
+
+- installs locked production dependencies with `uv`;
+- runs the API through `uvicorn`;
+- uses a non-root application user;
+- exposes a container healthcheck against `/health/live`.
+
+Docker Compose includes PostgreSQL, Redis, RabbitMQ, API, one-shot Alembic
+migration service, Celery worker, and Celery Beat. API, worker, and beat read
+JWT key files from Docker secrets mounted from `./certs`.
+
+## Testing And CI
+
+The main pytest suite covers auth, refresh rotation, projects, invites,
+membership, sprints, task workflow, review comments, cache invalidation, and
+sprint lifecycle jobs. Redis is isolated in tests with an in-memory fake.
+
+Smoke scripts under `tests/smoke/` run against a live API:
+
+- concurrency smoke: task claim race, refresh-token reuse race, invite accept
+  race;
+- load smoke: concurrent authenticated reads against the project list endpoint.
+
+GitHub Actions runs:
+
+- lockfile check;
+- Ruff;
+- Mypy;
+- Bandit;
+- `pip-audit`;
+- Alembic upgrade and migration diff check;
+- pytest;
+- Docker image build;
+- Docker Compose startup with live concurrency/load smoke checks.
+
+## Current Production Gaps
+
+ProjectHub is production-friendly as a backend portfolio project, but it is not
+a fully operated production system yet.
+
+Remaining production work:
+
+- deployment documentation for VPS/cloud runtime, reverse proxy, TLS, and DNS;
+- secret rotation policy and separate environment-specific secrets;
+- metrics/tracing beyond structured logs;
+- backup/restore runbooks for PostgreSQL and persistent Redis/RabbitMQ data;
+- full RBAC matrix tests for every command endpoint;
+- heavier load tests against a production-like PostgreSQL instance;
+- refresh-session cleanup job for expired sessions;
+- security review of auth, RBAC, CORS, headers, and abuse scenarios.
