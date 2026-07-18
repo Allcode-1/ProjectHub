@@ -1,3 +1,6 @@
+from fnmatch import fnmatch
+
+
 class InMemoryRedisPipeline:
     def __init__(self, redis: "InMemoryRedis"):
         self.redis = redis
@@ -68,6 +71,11 @@ class InMemoryRedis:
 
         self.expires[key] = seconds
         return True
+
+    def scan_iter(self, match: str):
+        for key in list(self.values):
+            if fnmatch(key, match):
+                yield key
 
     def pipeline(self) -> InMemoryRedisPipeline:
         return InMemoryRedisPipeline(self)

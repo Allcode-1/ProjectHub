@@ -1,3 +1,5 @@
+from app.core.config import settings
+
 from tests.helpers import (
     auth_headers,
     create_project,
@@ -20,6 +22,43 @@ def test_create_and_list_owned_project(client):
 
     assert response.status_code == 200
     assert response.json() == [project]
+
+
+def test_project_list_supports_limit_and_offset(client):
+    _, tokens = register_and_login(client, username="owner")
+    first = create_project(client, tokens["access_token"], name="Project one")
+    second = create_project(client, tokens["access_token"], name="Project two")
+    third = create_project(client, tokens["access_token"], name="Project three")
+
+    response = client.get(
+        "/api/v1/projects/?limit=1&offset=1",
+        headers=auth_headers(tokens["access_token"]),
+    )
+
+    assert response.status_code == 200
+    assert [project["id"] for project in response.json()] == [second["id"]]
+    assert first["id"] < second["id"] < third["id"]
+
+
+def test_project_mutations_are_rate_limited(client, monkeypatch):
+    monkeypatch.setattr(settings.rate_limit, "authenticated_mutation_user_limit", 1)
+    monkeypatch.setattr(settings.rate_limit, "authenticated_mutation_ip_limit", 100)
+    _, tokens = register_and_login(client, username="owner")
+
+    first_response = client.post(
+        "/api/v1/projects/",
+        json={"name": "Allowed project", "description": None},
+        headers=auth_headers(tokens["access_token"]),
+    )
+    limited_response = client.post(
+        "/api/v1/projects/",
+        json={"name": "Blocked project", "description": None},
+        headers=auth_headers(tokens["access_token"]),
+    )
+
+    assert first_response.status_code == 201
+    assert limited_response.status_code == 429
+    assert limited_response.headers["Retry-After"] == "60"
 
 
 def test_project_is_hidden_from_unrelated_user(client):

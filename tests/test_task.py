@@ -151,6 +151,41 @@ def test_task_status_routes_return_task_lists(client):
     assert done_response.json() == []
 
 
+def test_task_list_supports_limit_and_offset(client):
+    owner_tokens, _, _, project, sprint = setup_project_with_worker(client)
+    first = create_task(
+        client,
+        owner_tokens["access_token"],
+        project["id"],
+        sprint["id"],
+        title="Build API one",
+    )
+    second = create_task(
+        client,
+        owner_tokens["access_token"],
+        project["id"],
+        sprint["id"],
+        title="Build API two",
+    )
+    third = create_task(
+        client,
+        owner_tokens["access_token"],
+        project["id"],
+        sprint["id"],
+        title="Build API three",
+    )
+
+    response = client.get(
+        f"/api/v1/projects/{project['id']}/sprints/{sprint['id']}/tasks/"
+        "?limit=1&offset=1",
+        headers=auth_headers(owner_tokens["access_token"]),
+    )
+
+    assert response.status_code == 200
+    assert [task["id"] for task in response.json()] == [second["id"]]
+    assert first["id"] < second["id"] < third["id"]
+
+
 def test_user_task_lists(client):
     owner_tokens, worker, worker_tokens, project, sprint = setup_project_with_worker(
         client
