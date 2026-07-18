@@ -69,3 +69,12 @@ class RedisCache:
             self.redis.delete(*keys)
         except RedisError:
             logger.warning("Redis cache delete_many failed", exc_info=True)
+
+    def delete_pattern(self, pattern: str) -> None:
+        try:
+            keys = list(self.redis.scan_iter(match=pattern))
+        except RedisError:
+            logger.warning("Redis cache scan failed", exc_info=True)
+            return
+
+        self.delete_many(keys)

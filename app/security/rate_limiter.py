@@ -15,9 +15,12 @@ class RateLimiter:
 
         if current_ttl == -1:
             self.redis.expire(key, window_seconds)
+            current_ttl = window_seconds
 
         if count > limit:
+            retry_after = current_ttl if current_ttl > 0 else window_seconds
             raise HTTPException(
                 status_code=status.HTTP_429_TOO_MANY_REQUESTS,
                 detail="Too many requests",
+                headers={"Retry-After": str(retry_after)},
             )

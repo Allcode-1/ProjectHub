@@ -21,11 +21,18 @@ class SprintCache:
         self.project_list_ttl_seconds = project_list_ttl_seconds
         self.ttl_jitter_seconds = ttl_jitter_seconds
 
-    def project_sprints_key(self, project_id: int) -> str:
-        return self.cache.key("projects", project_id, "sprints")
+    def project_sprints_key(self, project_id: int, limit: int, offset: int) -> str:
+        return self.cache.key(
+            "projects", project_id, "sprints", "limit", limit, "offset", offset
+        )
 
-    def get_project_sprints(self, project_id: int) -> list[SprintRead] | None:
-        key = self.project_sprints_key(project_id)
+    def project_sprints_pattern(self, project_id: int) -> str:
+        return self.cache.key("projects", project_id, "sprints", "*")
+
+    def get_project_sprints(
+        self, project_id: int, limit: int, offset: int
+    ) -> list[SprintRead] | None:
+        key = self.project_sprints_key(project_id, limit, offset)
         payload = self.cache.get_json(key)
 
         if payload is None:
@@ -38,10 +45,14 @@ class SprintCache:
             return None
 
     def set_project_sprints(
-        self, project_id: int, sprints: Sequence[SprintRead]
+        self,
+        project_id: int,
+        sprints: Sequence[SprintRead],
+        limit: int,
+        offset: int,
     ) -> None:
 
-        key = self.project_sprints_key(project_id)
+        key = self.project_sprints_key(project_id, limit, offset)
         payload = _PROJECT_LIST_ADAPTER.dump_python(list(sprints), mode="json")
 
         self.cache.set_json(
@@ -52,9 +63,8 @@ class SprintCache:
         )
 
     def invalidate_project_sprints(self, project_id: int) -> None:
-        self.cache.delete(self.project_sprints_key(project_id))
+        self.cache.delete_pattern(self.project_sprints_pattern(project_id))
 
     def invalidate_projects_sprints(self, project_ids: Iterable[int]) -> None:
-        keys = {self.project_sprints_key(project_id) for project_id in project_ids}
-
-        self.cache.delete_many(keys)
+        for project_id in set(project_ids):
+            self.invalidate_project_sprints(project_id)

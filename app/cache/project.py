@@ -21,11 +21,18 @@ class ProjectCache:
         self.project_list_ttl_seconds = project_list_ttl_seconds
         self.ttl_jitter_seconds = ttl_jitter_seconds
 
-    def user_projects_key(self, user_id: int) -> str:
-        return self.cache.key("users", user_id, "projects")
+    def user_projects_key(self, user_id: int, limit: int, offset: int) -> str:
+        return self.cache.key(
+            "users", user_id, "projects", "limit", limit, "offset", offset
+        )
 
-    def get_user_projects(self, user_id: int) -> list[ProjectRead] | None:
-        key = self.user_projects_key(user_id)
+    def user_projects_pattern(self, user_id: int) -> str:
+        return self.cache.key("users", user_id, "projects", "*")
+
+    def get_user_projects(
+        self, user_id: int, limit: int, offset: int
+    ) -> list[ProjectRead] | None:
+        key = self.user_projects_key(user_id, limit, offset)
         payload = self.cache.get_json(key)
 
         if payload is None:
@@ -41,9 +48,11 @@ class ProjectCache:
         self,
         user_id: int,
         projects: Sequence[ProjectRead],
+        limit: int,
+        offset: int,
     ) -> None:
 
-        key = self.user_projects_key(user_id)
+        key = self.user_projects_key(user_id, limit, offset)
         payload = _PROJECT_LIST_ADAPTER.dump_python(list(projects), mode="json")
 
         self.cache.set_json(
@@ -54,9 +63,8 @@ class ProjectCache:
         )
 
     def invalidate_user_projects(self, user_id: int) -> None:
-        self.cache.delete(self.user_projects_key(user_id))
+        self.cache.delete_pattern(self.user_projects_pattern(user_id))
 
     def invalidate_users_projects(self, user_ids: Iterable[int]) -> None:
-        keys = {self.user_projects_key(user_id) for user_id in user_ids}
-
-        self.cache.delete_many(keys)
+        for user_id in set(user_ids):
+            self.invalidate_user_projects(user_id)
