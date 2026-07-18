@@ -1,19 +1,55 @@
+x-app-env: &app-env
+  DATABASE_URL: postgresql+psycopg://postgres:postgres@db:5432/project_hub
+  REDIS_URL: redis://redis:6379/0
+  CELERY_BROKER_URL: amqp://project_hub:${RABBITMQ_PASSWORD:-project_hub}@rabbitmq:5672/project_hub
+  LOG_LEVEL: ${LOG_LEVEL:-INFO}
+  READINESS_REQUIRE_REDIS: "true"
+  READINESS_REQUIRE_RABBITMQ: "false"
+  AUTH_JWT__PRIVATE_KEY_PATH: /run/secrets/jwt_private_key
+  AUTH_JWT__PUBLIC_KEY_PATH: /run/secrets/jwt_public_key
+
 services:
   api:
     build: .
     container_name: project-hub-api
     ports:
       - "8000:8000"
-    environment:
-      DATABASE_URL: postgresql+psycopg://postgres:postgres@db:5432/project_hub
-      REDIS_URL: redis://redis:6379/0
-      CELERY_BROKER_URL: amqp://project_hub:${RABBITMQ_PASSWORD}@rabbitmq:5672/project_hub
-    volumes:
-      - ./certs:/app/certs:ro
+    environment: *app-env
+    secrets:
+      - jwt_private_key
+      - jwt_public_key
     depends_on:
-      - db
-      - redis
-      - rabbitmq
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health/ready', timeout=3).read()",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    restart: unless-stopped
+
+  migrate:
+    build: .
+    container_name: project-hub-migrate
+    command: ["alembic", "upgrade", "head"]
+    environment: *app-env
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
 
   db:
     image: postgres:17-alpine
@@ -24,96 +60,108 @@ services:
       POSTGRES_DB: project_hub
     volumes:
       - project_hub_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d project_hub"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
 
   redis:
     image: redis:7-alpine
     container_name: project-hub-redis
+    command: ["redis-server", "--appendonly", "yes"]
     volumes:
       - project_hub_redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
 
-  worker: 
+  worker:
     build: .
     container_name: project-hub-worker
-
     command:
-      - uv
-      - run
-      - --no-sync
-      - celery
-      - -A
-      - app.jobs.celery_app:celery_app
-      - worker
-      - --loglevel=INFO
-      - --pool=prefork
-      - --concurrency=1
-      - --without-mingle
-      - --without-gossip
-
-    environment:
-      DATABASE_URL: postgresql+psycopg://postgres:postgres@db:5432/project_hub
-      REDIS_URL: redis://redis:6379/0
-      CELERY_BROKER_URL: amqp://project_hub:${RABBITMQ_PASSWORD}@rabbitmq:5672/project_hub
-
+      [
+        "celery",
+        "-A",
+        "app.jobs.celery_app:celery_app",
+        "worker",
+        "--loglevel=INFO",
+        "--pool=prefork",
+        "--concurrency=1",
+        "--without-mingle",
+        "--without-gossip",
+      ]
+    environment: *app-env
+    secrets:
+      - jwt_private_key
+      - jwt_public_key
     depends_on:
-      - db
-      - redis
-      - rabbitmq
-
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     restart: unless-stopped
 
   beat:
     build: .
     container_name: project-hub-beat
-
     command:
-      - uv
-      - run
-      - --no-sync
-      - celery
-      - -A
-      - app.jobs.celery_app:celery_app
-      - beat
-      - --loglevel=INFO
-      - --schedule=/tmp/celerybeat-schedule
-
-    environment:
-      DATABASE_URL: postgresql+psycopg://postgres:postgres@db:5432/project_hub
-      REDIS_URL: redis://redis:6379/0
-      CELERY_BROKER_URL: amqp://project_hub:${RABBITMQ_PASSWORD}@rabbitmq:5672/project_hub
-
+      [
+        "celery",
+        "-A",
+        "app.jobs.celery_app:celery_app",
+        "beat",
+        "--loglevel=INFO",
+        "--schedule=/tmp/celerybeat-schedule",
+      ]
+    environment: *app-env
+    secrets:
+      - jwt_private_key
+      - jwt_public_key
     depends_on:
-      - db
-      - redis
-      - rabbitmq
-
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     restart: unless-stopped
-
 
   rabbitmq:
     image: rabbitmq:4-management-alpine
     container_name: project-hub-rabbitmq
-
     environment:
       RABBITMQ_DEFAULT_USER: project_hub
-      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-project_hub}
       RABBITMQ_DEFAULT_VHOST: project_hub
-
     volumes:
       - project_hub_rabbitmqdata:/var/lib/rabbitmq
-
     ports:
       - "127.0.0.1:15672:15672"
-
     healthcheck:
       test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
       interval: 10s
       timeout: 5s
       retries: 10
-
     restart: unless-stopped
-
 
 volumes:
   project_hub_pgdata:
   project_hub_redisdata:
   project_hub_rabbitmqdata:
+
+secrets:
+  jwt_private_key:
+    file: ./certs/private.pem
+  jwt_public_key:
+    file: ./certs/public.pem

@@ -24,6 +24,9 @@ testing.
 - Structured JSON logs for HTTP requests and Celery tasks.
 - Liveness/readiness health endpoints.
 - Security and dependency audit tooling.
+- GitHub Actions CI quality gates.
+- Docker Compose healthchecks, migration startup flow, and JWT key secrets.
+- Load and concurrency smoke scripts for a running API.
 - Pytest integration coverage, Ruff, Mypy, Alembic sync checks.
 
 ## Domain Model
@@ -198,7 +201,29 @@ uv run pip-audit
 These checks are not a replacement for manual auth/RBAC review, but they catch
 known vulnerable packages and common unsafe Python patterns.
 
-## Testing And Quality Gates
+## CI And Quality Gates
+
+The GitHub Actions workflow in `.github/workflows/ci.yml` runs the backend
+quality gates against PostgreSQL, Redis, and RabbitMQ service containers.
+
+CI checks:
+
+```bash
+uv lock --check
+uv run ruff check .
+uv run mypy app tests
+uv run bandit -q -r app -ll
+uv run pip-audit
+uv run alembic upgrade head
+uv run alembic check
+uv run pytest -q
+docker build -t project-hub:ci .
+```
+
+The CI job also generates a temporary RS256 key pair and creates separate
+PostgreSQL databases for application migration checks and destructive tests.
+
+## Testing
 
 Run the main test suite:
 
@@ -219,21 +244,59 @@ The test suite covers core API flows: auth, refresh rotation, projects, invites,
 membership, sprints, task workflow actions, review comments, cache invalidation,
 and sprint lifecycle jobs. Redis is isolated in tests with an in-memory fake.
 
+## Load And Concurrency Smoke Tests
+
+Smoke scripts live under `tests/smoke/` and run against a real running API. They
+are separate from the normal pytest suite because they mutate live data and
+depend on PostgreSQL, Redis, RabbitMQ, and the API process being up.
+
+Run concurrency smoke checks:
+
+```bash
+uv run python tests/smoke/concurrency_smoke.py --base-url http://localhost:8000
+```
+
+This checks:
+
+- many workers racing to claim the same task;
+- many refresh requests racing to reuse one refresh token;
+- many invite accept requests racing on the same invite.
+
+Expected behavior is exactly one successful request and the rest controlled
+`409` or `401` responses.
+
+Run a small read-load smoke check:
+
+```bash
+uv run python tests/smoke/load_smoke.py \
+  --base-url http://localhost:8000 \
+  --requests 100 \
+  --concurrency 20
+```
+
+This creates a user/project and sends concurrent authenticated reads to the
+project list endpoint, then prints p50/p95/max latency.
+
 ## Docker Compose
 
 The repository includes Docker Compose services for the API, PostgreSQL, Redis,
 RabbitMQ, Celery worker, and Celery Beat.
 
-Generate JWT keys in `certs/`, then start the stack and run migrations:
+Generate JWT keys in `certs/`, then start the stack:
 
 ```bash
 mkdir -p certs
 openssl genrsa -out certs/private.pem 2048
 openssl rsa -in certs/private.pem -pubout -out certs/public.pem
-docker compose up -d db redis rabbitmq
-docker compose run --rm api uv run alembic upgrade head
-docker compose up -d api worker beat
+docker compose up -d --build
 ```
+
+Compose includes healthchecks for PostgreSQL, Redis, RabbitMQ, and the API. A
+one-shot `migrate` service applies Alembic migrations after PostgreSQL becomes
+healthy and before the API, worker, and beat services start.
+
+The API image runs as a non-root user. JWT keys stay outside the image and are
+mounted into API/worker/beat containers as Docker secrets.
 
 Check the API:
 
@@ -260,6 +323,8 @@ CELERY_BROKER_URL=amqp://guest:guest@localhost:5672//
 LOG_LEVEL=INFO
 READINESS_REQUIRE_REDIS=true
 READINESS_REQUIRE_RABBITMQ=false
+AUTH_JWT__PRIVATE_KEY_PATH=certs/private.pem
+AUTH_JWT__PUBLIC_KEY_PATH=certs/public.pem
 ```
 
 Install dependencies:
@@ -319,17 +384,16 @@ Currently implemented:
 - structured JSON logging;
 - liveness/readiness health checks;
 - security and dependency audit commands;
+- GitHub Actions CI workflow;
 - PostgreSQL constraints/indexes;
 - Alembic migrations;
-- Docker Compose;
+- Docker Compose with healthchecks, migration service, and key secrets;
+- load/concurrency smoke scripts;
 - integration tests.
 
 Still planned:
 
 - full RBAC matrix tests;
-- CI workflow;
-- Docker Compose healthcheck/startup hardening;
-- load/concurrency smoke tests against a real running API;
 - production deployment docs;
 - better sprint closing report/results;
 - unfinished task migration between sprints;

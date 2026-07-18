@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import BaseModel
 
 BASE_DIR = Path(__file__).parent.parent.parent
@@ -15,6 +15,8 @@ class Auth_JWT(BaseModel):
 
 
 class Settings(BaseSettings):
+    model_config = SettingsConfigDict(env_nested_delimiter="__")
+
     app_name: str = "ProjectHub"
     log_level: str = "INFO"
     healthcheck_timeout_seconds: float = 1.0
