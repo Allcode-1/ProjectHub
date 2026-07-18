@@ -24,6 +24,8 @@ from app.dependencies.project import (
 )
 from app.dependencies.sprint import get_sprint_by_id_or_404
 from app.dependencies.task import get_task_by_id_or_404
+from app.dependencies.pagination import Pagination, get_pagination
+from app.dependencies.rate_limiter import rate_limit_authenticated_mutation
 
 
 router = APIRouter()
@@ -35,9 +37,15 @@ ManageSprintsProject = Annotated[Project, Depends(require_can_manage_sprints)]
 TakeTasksProject = Annotated[Project, Depends(require_can_take_tasks)]
 CurrentSprint = Annotated[Sprint, Depends(get_sprint_by_id_or_404)]
 CurrentTask = Annotated[Task, Depends(get_task_by_id_or_404)]
+PaginationDep = Annotated[Pagination, Depends(get_pagination)]
 
 
-@router.post("/", response_model=TaskRead, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/",
+    response_model=TaskRead,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(rate_limit_authenticated_mutation)],
+)
 def add_task_router(
     payload: TaskCreate,
     project: ManageSprintsProject,
@@ -55,10 +63,13 @@ def get_tasks_router(
     sprint: CurrentSprint,
     user: CurrentUser,
     db: DbSession,
+    pagination: PaginationDep,
 ):
 
     task_repo = TaskRepository(db)
-    tasks = task_repo.all_tasks_of_sprint(project.id, sprint.id)
+    tasks = task_repo.all_tasks_of_sprint(
+        project.id, sprint.id, pagination.limit, pagination.offset
+    )
     return tasks
 
 
@@ -68,10 +79,13 @@ def get_tasks_todo(
     sprint: CurrentSprint,
     user: CurrentUser,
     db: DbSession,
+    pagination: PaginationDep,
 ):
 
     task_repo = TaskRepository(db)
-    tasks = task_repo.tasks_todo(project.id, sprint.id)
+    tasks = task_repo.tasks_todo(
+        project.id, sprint.id, pagination.limit, pagination.offset
+    )
     return tasks
 
 
@@ -81,10 +95,13 @@ def get_tasks_in_progress(
     sprint: CurrentSprint,
     user: CurrentUser,
     db: DbSession,
+    pagination: PaginationDep,
 ):
 
     task_repo = TaskRepository(db)
-    tasks = task_repo.tasks_in_progress(project.id, sprint.id)
+    tasks = task_repo.tasks_in_progress(
+        project.id, sprint.id, pagination.limit, pagination.offset
+    )
     return tasks
 
 
@@ -94,10 +111,13 @@ def get_tasks_on_review(
     sprint: CurrentSprint,
     user: CurrentUser,
     db: DbSession,
+    pagination: PaginationDep,
 ):
 
     task_repo = TaskRepository(db)
-    tasks = task_repo.tasks_on_review(project.id, sprint.id)
+    tasks = task_repo.tasks_on_review(
+        project.id, sprint.id, pagination.limit, pagination.offset
+    )
     return tasks
 
 
@@ -107,10 +127,13 @@ def get_tasks_done(
     sprint: CurrentSprint,
     user: CurrentUser,
     db: DbSession,
+    pagination: PaginationDep,
 ):
 
     task_repo = TaskRepository(db)
-    tasks = task_repo.tasks_done(project.id, sprint.id)
+    tasks = task_repo.tasks_done(
+        project.id, sprint.id, pagination.limit, pagination.offset
+    )
     return tasks
 
 
@@ -120,10 +143,13 @@ def get_tasks_rejected(
     sprint: CurrentSprint,
     user: CurrentUser,
     db: DbSession,
+    pagination: PaginationDep,
 ):
 
     task_repo = TaskRepository(db)
-    tasks = task_repo.tasks_rejected(project.id, sprint.id)
+    tasks = task_repo.tasks_rejected(
+        project.id, sprint.id, pagination.limit, pagination.offset
+    )
     return tasks
 
 
@@ -133,10 +159,13 @@ def get_my_created_tasks(
     sprint: CurrentSprint,
     user: CurrentUser,
     db: DbSession,
+    pagination: PaginationDep,
 ):
 
     task_repo = TaskRepository(db)
-    tasks = task_repo.tasks_created_by_user(project.id, sprint.id, user.id)
+    tasks = task_repo.tasks_created_by_user(
+        project.id, sprint.id, user.id, pagination.limit, pagination.offset
+    )
     return tasks
 
 
@@ -146,10 +175,13 @@ def get_my_workspace_tasks(
     sprint: CurrentSprint,
     user: CurrentUser,
     db: DbSession,
+    pagination: PaginationDep,
 ):
 
     task_repo = TaskRepository(db)
-    tasks = task_repo.tasks_assigned_to_user(project.id, sprint.id, user.id)
+    tasks = task_repo.tasks_assigned_to_user(
+        project.id, sprint.id, user.id, pagination.limit, pagination.offset
+    )
     return tasks
 
 
@@ -165,7 +197,11 @@ def get_task_router(
     return task
 
 
-@router.delete("/{task_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete(
+    "/{task_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[Depends(rate_limit_authenticated_mutation)],
+)
 def delete_task_router(
     project: ManageSprintsProject,
     sprint: CurrentSprint,
@@ -177,7 +213,11 @@ def delete_task_router(
     return delete_task(project, sprint, task, user, db)
 
 
-@router.patch("/{task_id}", response_model=TaskRead)
+@router.patch(
+    "/{task_id}",
+    response_model=TaskRead,
+    dependencies=[Depends(rate_limit_authenticated_mutation)],
+)
 def update_task_router(
     payload: TaskUpdate,
     project: ManageSprintsProject,
