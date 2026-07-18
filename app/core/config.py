@@ -15,6 +15,12 @@ class Auth_JWT(BaseModel):
 
 
 class Settings(BaseSettings):
+    app_name: str = "ProjectHub"
+    log_level: str = "INFO"
+    healthcheck_timeout_seconds: float = 1.0
+    readiness_require_redis: bool = True
+    readiness_require_rabbitmq: bool = False
+
     auth_jwt: Auth_JWT = Auth_JWT()
     redis_url: str = "redis://localhost:6390/0"
 

@@ -2,35 +2,38 @@
 
 ProjectHub is a FastAPI backend API for Jira-like project management workflows.
 
-This project is built as a backend engineering portfolio project, focused on
-authentication, project-level RBAC, domain workflows, PostgreSQL modeling,
-Redis, Celery, Docker Compose, and integration testing.
+This is a backend engineering portfolio project focused on authentication,
+project-level RBAC, workflow consistency, PostgreSQL modeling, Redis,
+Celery/RabbitMQ, observability, security checks, Docker Compose, and integration
+testing.
 
 ## Engineering Focus
 
 - RS256 JWT authentication with refresh-session rotation.
 - Project-level RBAC: owner, admin, worker, viewer.
-- Invite-based project membership.
-- Sprint lifecycle: planned, active, closed.
+- Invite-based project membership and member self-leave flow.
+- Sprint lifecycle: planned -> active -> closed.
 - Task workflow: TODO -> IN_PROGRESS -> REVIEW -> DONE / REJECTED.
-- Review comments created during task decline.
-- Transaction boundaries in the service layer.
+- Concurrency-safe task claiming and refresh-token reuse protection.
+- Row-locking around invite accept/decline flows.
+- Service-layer transaction boundaries.
+- PostgreSQL constraints and indexes for workflow queries.
 - Redis cache-aside for project and sprint lists.
 - Redis-backed login rate limiting.
-- Celery Beat + RabbitMQ sprint lifecycle job.
-- PostgreSQL schema with SQLAlchemy 2 and Alembic.
-- Docker Compose environment.
-- Pytest integration coverage.
+- Celery Beat + RabbitMQ sprint lifecycle synchronization.
+- Structured JSON logs for HTTP requests and Celery tasks.
+- Liveness/readiness health endpoints.
+- Security and dependency audit tooling.
+- Pytest integration coverage, Ruff, Mypy, Alembic sync checks.
 
 ## Domain Model
 
 ProjectHub models a project workspace where users create projects as owners,
-owners and admins invite teammates, members receive project-level roles,
-managers create sprints and tasks, workers take tasks and send them to review,
-and owners/admins accept or decline reviewed tasks.
+invite teammates, manage project-level roles, create sprints, create tasks, let
+workers take tasks, and review completed work.
 
-Declined tasks can receive review comments, which gives workers a simple
-feedback loop before resuming the task.
+Declined tasks can receive review comments, giving workers a feedback loop
+before resuming work.
 
 Task workflow:
 
@@ -49,33 +52,45 @@ PLANNED -> ACTIVE -> CLOSED
 
 Business logic lives in services, repositories isolate SQLAlchemy access, and
 dependencies handle authentication, authorization, and nested resource loading.
-Redis and Celery are used where they support the domain: cached reads, login
-rate limiting, and scheduled sprint lifecycle synchronization.
+
+The backend treats PostgreSQL as the source of truth. Redis and RabbitMQ support
+specific operational concerns: cached reads, login rate limiting, and scheduled
+sprint lifecycle synchronization.
+
+Important command flows are protected with database-level consistency patterns:
+
+- task claiming uses conditional `UPDATE ... WHERE current_state ... RETURNING`;
+- refresh-token rotation revokes active sessions through conditional update;
+- invite accept/decline uses row locks;
+- invalid workflow transitions return application-level `409` errors.
 
 ## Engineering Decisions
 
 **Why RS256 instead of HS256?**
 RS256 keeps signing and verification responsibilities separate through a private
-and public key pair. That is more infrastructure than a shared secret, but it
-shows a realistic token setup where only the auth server needs the private key.
-For this project, it is mainly an engineering exercise in asymmetric JWTs.
+and public key pair. It is heavier than a shared secret, but it models a more
+realistic token setup where only the auth service needs the private key.
 
-**Why split services and repositories?**
-Workflow rules such as task review, invite acceptance, and sprint transitions
-belong in services because they combine validation, state changes, and
-transactions. Repositories stay focused on SQLAlchemy queries, which keeps route
-handlers thin and makes business logic easier to inspect.
+**Why services and repositories?**
+Workflow rules such as task review, invite acceptance, sprint transitions, and
+project leaving belong in services because they combine validation, state
+changes, and transactions. Repositories stay focused on SQLAlchemy queries.
 
-**Why cache-aside instead of write-through?**
+**Why conditional updates for task claiming?**
+Two users can try to take the same task at the same time. A Python-level check
+is not enough. The claim operation is guarded by the database so only one update
+can match the expected state.
+
+**Why cache-aside?**
 Project and sprint lists are read-heavy and easy to rebuild from PostgreSQL.
-Cache-aside keeps PostgreSQL as the source of truth, lets Redis fail open for
-queries, and makes invalidation explicit after key mutations.
+Cache-aside keeps PostgreSQL authoritative while Redis improves common read
+paths.
 
 ## Authentication
 
-The authentication flow includes user registration, login, bcrypt password
-hashing, RS256 access/refresh JWTs, refresh sessions stored in PostgreSQL,
-refresh-token rotation, logout/revoke, and a current-user endpoint.
+The authentication flow includes registration, login, bcrypt password hashing,
+RS256 access/refresh JWTs, refresh sessions in PostgreSQL, refresh-token
+rotation, logout/revoke, and a current-user endpoint.
 
 Login is protected by Redis-backed rate limiting using both client IP and
 username keys.
@@ -89,44 +104,73 @@ ProjectHub uses project-level roles:
 - `worker`: takes tasks, works on assigned tasks, and reads decline comments.
 - `viewer`: has read-only access to project data.
 
-Project-level permissions are checked in dependencies, while object-level rules
-are enforced in services. The API also validates nested resource consistency:
+Project-level permissions are checked in dependencies. Object-level rules are
+enforced in services. Nested resource consistency is also validated:
 
 ```text
 project_id -> sprint_id -> task_id
 ```
 
-Task actions include assigned-worker checks, and invite actions are restricted
-to the invite recipient where appropriate.
-
 More details are documented in [RBAC](docs/RBAC.md).
 
-## Workflow Logic
+## Observability
 
-Task services validate allowed state transitions:
+HTTP requests are logged as structured JSON with:
 
-- take a TODO task into work;
-- send an assigned task to review;
-- accept reviewed work;
-- decline reviewed work with an optional review comment;
-- resume a rejected task.
+- request id;
+- method and path;
+- status code;
+- duration in milliseconds;
+- client IP.
 
-Sprint services support sprint creation, manual start, manual close, and
-periodic lifecycle synchronization through Celery Beat.
+Every response includes an `X-Request-ID` header. If a caller sends
+`X-Request-ID`, the API keeps it; otherwise the middleware generates one.
+
+Celery tasks also emit structured lifecycle logs for task start, finish, and
+failure without logging task arguments.
+
+Configure log level with:
+
+```env
+LOG_LEVEL=INFO
+```
+
+## Health Checks
+
+The API exposes:
+
+```text
+GET /health
+GET /health/live
+GET /health/ready
+```
+
+`/health/live` confirms that the application process is alive.
+
+`/health/ready` checks runtime dependencies:
+
+- PostgreSQL: required;
+- Redis: required by default;
+- RabbitMQ: reported, optional by default for the API process.
+
+Readiness behavior can be adjusted with:
+
+```env
+READINESS_REQUIRE_REDIS=true
+READINESS_REQUIRE_RABBITMQ=false
+HEALTHCHECK_TIMEOUT_SECONDS=1.0
+```
 
 ## Redis
 
-Redis is used in two places:
+Redis is used for:
 
 - cache-aside reads for project and sprint lists;
 - login rate limiting by IP and username.
 
 Cached values are JSON-serialized, validated with Pydantic on read, stored with
-TTL + jitter, and invalidated after key mutations. Cached queries are designed
-to fail open: if Redis cache access fails, the API falls back to PostgreSQL.
-
-Limitation: cache invalidation is implemented for key flows, but it is not yet a
-full universal cache strategy for every possible mutation.
+TTL + jitter, and invalidated after key mutations. Cached query failures fall
+back to PostgreSQL.
 
 ## Celery / Background Jobs
 
@@ -137,43 +181,48 @@ Celery Beat schedules a sprint lifecycle synchronization job that periodically:
 - closes planned/active sprints whose end time has passed;
 - invalidates affected sprint-list cache keys.
 
-Limitation: Celery is currently used for sprint lifecycle synchronization, not
-for a broad background job system yet.
+## Security And Dependency Audit
 
-## Testing
-
-The test suite uses pytest integration tests for the core API flows:
-
-- auth, login, refresh rotation, logout/revoke;
-- projects and project visibility;
-- invites and membership;
-- sprints;
-- tasks and task workflow actions;
-- review comments;
-- cache invalidation;
-- Celery schedule and sprint lifecycle idempotency.
-
-Redis is isolated in tests with an in-memory fake. Tests cover the main flows,
-but this is not a complete permission and concurrency matrix yet. Concurrency
-tests and a full RBAC permission matrix are planned.
-
-Run tests:
+Static code security scan:
 
 ```bash
-uv run pytest
+uv run bandit -q -r app -ll
 ```
 
-Run linting and type checks:
+Known dependency vulnerability audit:
+
+```bash
+uv run pip-audit
+```
+
+These checks are not a replacement for manual auth/RBAC review, but they catch
+known vulnerable packages and common unsafe Python patterns.
+
+## Testing And Quality Gates
+
+Run the main test suite:
+
+```bash
+uv run pytest -q
+```
+
+Run quality checks:
 
 ```bash
 uv run ruff check .
 uv run mypy app tests
+uv run alembic check
+uv lock --check
 ```
+
+The test suite covers core API flows: auth, refresh rotation, projects, invites,
+membership, sprints, task workflow actions, review comments, cache invalidation,
+and sprint lifecycle jobs. Redis is isolated in tests with an in-memory fake.
 
 ## Docker Compose
 
-The repository includes a Docker Compose environment for the API, PostgreSQL,
-Redis, RabbitMQ, Celery worker, and Celery Beat.
+The repository includes Docker Compose services for the API, PostgreSQL, Redis,
+RabbitMQ, Celery worker, and Celery Beat.
 
 Generate JWT keys in `certs/`, then start the stack and run migrations:
 
@@ -189,7 +238,8 @@ docker compose up -d api worker beat
 Check the API:
 
 ```bash
-curl http://localhost:8000/health
+curl http://localhost:8000/health/live
+curl http://localhost:8000/health/ready
 ```
 
 Interactive API docs:
@@ -207,6 +257,9 @@ DATABASE_URL=postgresql+psycopg://user:password@localhost:5432/project_hub
 TEST_DATABASE_URL=postgresql+psycopg://user:password@localhost:5432/project_hub_test
 REDIS_URL=redis://localhost:6390/0
 CELERY_BROKER_URL=amqp://guest:guest@localhost:5672//
+LOG_LEVEL=INFO
+READINESS_REQUIRE_REDIS=true
+READINESS_REQUIRE_RABBITMQ=false
 ```
 
 Install dependencies:
@@ -233,6 +286,7 @@ The API covers these main areas:
 
 - Auth: register, login, refresh, logout, current user.
 - Projects: create, read, update, delete, list accessible projects.
+- Project members: list members and leave joined project.
 - Invites: invite users, accept/decline invites, list received invites.
 - Sprints: create, update, start, close, list project sprints.
 - Tasks: create, assign, filter by status, take to work, send to review,
@@ -247,51 +301,39 @@ http://localhost:8000/docs
 
 ## Current Status
 
-ProjectHub is an MVP / backend portfolio project.
+ProjectHub is a production-friendly backend portfolio project, not a complete
+production product.
 
 Currently implemented:
 
-- auth;
-- project CRUD;
+- auth and refresh sessions;
+- project CRUD and project membership;
 - invites;
-- project roles;
-- sprints;
-- task workflow;
+- project-level RBAC;
+- sprint/task workflows;
+- concurrency-safe task claiming;
+- stricter sprint/task state rules;
+- project member self-leave flow;
 - Redis cache/rate limiting;
 - Celery sprint lifecycle synchronization;
+- structured JSON logging;
+- liveness/readiness health checks;
+- security and dependency audit commands;
+- PostgreSQL constraints/indexes;
+- Alembic migrations;
 - Docker Compose;
 - integration tests.
 
-Needs hardening:
+Still planned:
 
-- sprint closing product flow;
-- unfinished task migration between sprints;
-- stricter task/sprint state machine;
-- concurrency-safe task claiming;
-- database constraints and indexes review;
-- complete cache invalidation strategy;
 - full RBAC matrix tests;
-- production deployment docs and CI.
-
-## Roadmap
-
-### v0.2
-
-- Stricter task/sprint state machine.
-- Concurrency-safe task claiming.
-- Database indexes and constraints review.
-- Full RBAC matrix tests.
-- Alembic migration tests.
-- Better cache invalidation.
-
-### v0.3
-
-- Unfinished task migration between sprints.
-- Better sprint closing report/results.
-- CI workflow.
-- Production Docker/Nginx docs.
-- Observability and logging improvements.
-- Expired refresh session cleanup.
+- CI workflow;
+- Docker Compose healthcheck/startup hardening;
+- load/concurrency smoke tests against a real running API;
+- production deployment docs;
+- better sprint closing report/results;
+- unfinished task migration between sprints;
+- expired refresh session cleanup job.
 
 ## What This Project Is Not
 
