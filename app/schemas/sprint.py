@@ -6,7 +6,7 @@ from app.models.sprint import SprintStatus
 
 class SprintCreate(BaseModel):
     name: str = Field(min_length=3, max_length=55)
-    description: str | None = Field(max_length=255)
+    description: str | None = Field(default=None, max_length=255)
     starts_at: datetime | None = None
 
 
