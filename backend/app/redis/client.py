@@ -1,0 +1,16 @@
+from redis import Redis
+
+from backend.app.core.config import settings
+
+
+redis_client = Redis.from_url(
+    settings.redis_url,
+    decode_responses=True,
+    socket_connect_timeout=1,
+    socket_timeout=1,
+    health_check_interval=30,
+)
+
+
+def get_redis() -> Redis:
+    return redis_client

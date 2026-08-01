@@ -18,7 +18,7 @@ x-app-env: &app-env
 
 services:
   api:
-    build: .
+    build: ./backend
     container_name: project-hub-api
     ports:
       - "8000:8000"
@@ -50,7 +50,7 @@ services:
     restart: unless-stopped
 
   migrate:
-    build: .
+    build: ./backend
     container_name: project-hub-migrate
     command: ["alembic", "upgrade", "head"]
     environment: *app-env
@@ -89,13 +89,13 @@ services:
     restart: unless-stopped
 
   worker:
-    build: .
+    build: ./backend
     container_name: project-hub-worker
     command:
       [
         "celery",
         "-A",
-        "app.jobs.celery_app:celery_app",
+        "backend.app.jobs.celery_app:celery_app",
         "worker",
         "--loglevel=INFO",
         "--pool=prefork",
@@ -119,13 +119,13 @@ services:
     restart: unless-stopped
 
   beat:
-    build: .
+    build: ./backend
     container_name: project-hub-beat
     command:
       [
         "celery",
         "-A",
-        "app.jobs.celery_app:celery_app",
+        "backend.app.jobs.celery_app:celery_app",
         "beat",
         "--loglevel=INFO",
         "--schedule=/tmp/celerybeat-schedule",
@@ -170,6 +170,6 @@ volumes:
 
 secrets:
   jwt_private_key:
-    file: ./certs/private.pem
+    file: ./backend/certs/private.pem
   jwt_public_key:
-    file: ./certs/public.pem
+    file: ./backend/certs/public.pem
