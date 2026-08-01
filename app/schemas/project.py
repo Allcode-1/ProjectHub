@@ -1,6 +1,14 @@
 from datetime import datetime
+from enum import Enum
 
 from pydantic import BaseModel, Field, ConfigDict
+
+
+class ProjectRole(str, Enum):
+    OWNER = "owner"
+    ADMIN = "admin"
+    WORKER = "worker"
+    VIEWER = "viewer"
 
 
 class ProjectCreate(BaseModel):
@@ -16,6 +24,7 @@ class ProjectRead(BaseModel):
     name: str
     description: str | None
     created_at: datetime
+    current_user_role: ProjectRole
 
 
 class ProjectUpdate(BaseModel):

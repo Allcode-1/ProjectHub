@@ -9,12 +9,13 @@ from app.auth.dependencies import get_current_active_user
 from app.models.user import User
 from app.models.project import Project
 
-from app.schemas.project import ProjectCreate, ProjectRead, ProjectUpdate
+from app.schemas.project import ProjectCreate, ProjectRead, ProjectRole, ProjectUpdate
 from app.auth.schemas import UserRead
 
 from app.services.project_actions import create_project, update_project, delete_project
 from app.services.project_members import leave_project
-from app.services.project_queries import ProjectQueryService
+from app.services.project_queries import ProjectQueryService, project_to_read
+from app.services.project_membership import get_project_role
 
 from app.repositories.project import ProjectRepository
 
@@ -53,7 +54,8 @@ def add_project_router(
     project_cache: ProjectCacheDep,
 ):
 
-    return create_project(payload, user, db, project_cache)
+    project = create_project(payload, user, db, project_cache)
+    return project_to_read(project, ProjectRole.OWNER)
 
 
 @router.get("/", response_model=list[ProjectRead])
@@ -75,7 +77,7 @@ def get_project_router(
     db: DbSession,
 ):
 
-    return project
+    return project_to_read(project, get_project_role(db, user, project))
 
 
 @router.delete(
@@ -106,7 +108,8 @@ def update_project_router(
     project_cache: ProjectCacheDep,
 ):
 
-    return update_project(payload, project, user, db, project_cache)
+    updated_project = update_project(payload, project, user, db, project_cache)
+    return project_to_read(updated_project, ProjectRole.OWNER)
 
 
 @router.get("/{project_id}/members", response_model=list[UserRead])

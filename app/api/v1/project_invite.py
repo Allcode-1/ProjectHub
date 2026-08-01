@@ -3,6 +3,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
+from app.core.errors import AppError
 from app.db.session import get_db
 from app.auth.dependencies import get_current_active_user
 
@@ -112,10 +113,7 @@ def get_invite_by_id(
     invite = invites_repo.invite_by_id(invite_id)
 
     if not invite or invite.send_to != user.id:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Invite not found",
-        )
+        raise AppError(404, "Invite not found")
 
     return invite
 

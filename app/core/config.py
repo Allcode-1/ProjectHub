@@ -9,6 +9,13 @@ BASE_DIR = Path(__file__).parent.parent.parent
 load_dotenv(BASE_DIR / ".env")
 
 
+class AllowedOriginsCors(BaseModel):
+    credentials: list = [
+        "http://localhost:3000",
+        "http://localhost"
+    ]
+
+
 class Auth_JWT(BaseModel):
     public_key_path: Path = BASE_DIR / "certs" / "public.pem"
     private_key_path: Path = BASE_DIR / "certs" / "private.pem"
@@ -63,6 +70,7 @@ class Settings(BaseSettings):
     readiness_require_redis: bool = True
     readiness_require_rabbitmq: bool = False
 
+    allowed_origins: AllowedOriginsCors = AllowedOriginsCors()
     auth_jwt: Auth_JWT = Auth_JWT()
     database: DatabaseSettings = DatabaseSettings()
     pagination: PaginationSettings = PaginationSettings()

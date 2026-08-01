@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from app.models.project import Project
 from app.models.project_member import ProjectMember, ProjectInviteAccessLevel
 from app.models.user import User
+from app.schemas.project import ProjectRole
 
 
 def get_project_access(
@@ -15,6 +16,17 @@ def get_project_access(
             ProjectMember.project_id == project_id, ProjectMember.user_id == user_id
         )
     )
+
+
+def get_project_role(db: Session, user: User, project: Project) -> ProjectRole:
+    if is_project_owner(user, project):
+        return ProjectRole.OWNER
+
+    access = get_project_access(db, user.id, project.id)
+    if access is None:
+        raise ValueError("User has no access to project")
+
+    return ProjectRole(access.role)
 
 
 def is_project_owner(user: User, project: Project) -> bool:

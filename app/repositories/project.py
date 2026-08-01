@@ -1,4 +1,4 @@
-from sqlalchemy import or_, select
+from sqlalchemy import String, and_, case, cast, or_, select
 from sqlalchemy.orm import Session
 
 from app.models.user import User
@@ -37,28 +37,34 @@ class ProjectRepository:
             self.db.scalars(_apply_pagination(statement, limit, offset)).all()
         )
 
-    def list_accessible_by_user(
+    def list_accessible_by_user_with_role(
         self, user_id: int, limit: int | None = None, offset: int = 0
-    ) -> list[Project]:
-
-        member_project_ids = select(ProjectMember.project_id).where(
-            ProjectMember.user_id == user_id
-        )
-
+    ) -> list[tuple[Project, ProjectInviteAccessLevel | str]]:
         statement = (
-            select(Project)
+            select(
+                Project,
+                case(
+                    (Project.owner_id == user_id, "owner"),
+                    else_=cast(ProjectMember.role, String),
+                ),
+            )
+            .outerjoin(
+                ProjectMember,
+                and_(
+                    ProjectMember.project_id == Project.id,
+                    ProjectMember.user_id == user_id,
+                ),
+            )
             .where(
                 or_(
                     Project.owner_id == user_id,
-                    Project.id.in_(member_project_ids),
+                    ProjectMember.user_id == user_id,
                 )
             )
             .order_by(Project.id)
         )
 
-        return list(
-            self.db.scalars(_apply_pagination(statement, limit, offset)).all()
-        )
+        return list(self.db.execute(_apply_pagination(statement, limit, offset)).tuples())
 
     def project_worker_by_id(self, project_id: int, user_id: int) -> User | None:
 

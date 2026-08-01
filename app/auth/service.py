@@ -102,7 +102,7 @@ def authenticate_user(username: str, password: str, db: Session) -> User:
     user = db.scalar(select(User).where(User.username == username))
 
     if not user:
-        raise AppError(401, "Profile not found")
+        raise AppError(401, "Invalid credentials")
 
     if not auth_utils.validate_password(password, user.hashed_password):
         raise AppError(401, "Invalid credentials")

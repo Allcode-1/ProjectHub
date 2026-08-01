@@ -3,6 +3,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
+from app.core.errors import AppError
 from app.auth.dependencies import get_current_active_user
 from app.db.session import get_db
 from app.dependencies.pagination import Pagination, get_pagination
@@ -56,17 +57,11 @@ def get_my_review_comment_router(
     review_comment = review_comment_repo.comment_by_id(comment_id)
 
     if review_comment is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Review comment not found",
-        )
+        raise AppError(404, "Review comment not found")
 
     task = task_repo.task_by_id(project.id, sprint.id, review_comment.task_id)
 
     if task is None or task.worker_id != user.id or task.status != TaskStatus.REJECTED:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Review comment not found",
-        )
+        raise AppError(404, "Review comment not found")
 
     return review_comment
