@@ -1,4 +1,4 @@
-from backend.tests.helpers import auth_headers, login_user, register_user
+from tests.helpers import auth_headers, login_user, register_user
 
 
 def test_register_user(client):

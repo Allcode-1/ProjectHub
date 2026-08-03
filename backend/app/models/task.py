@@ -12,7 +12,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import Mapped, mapped_column
 
-from backend.app.db.session import Base
+from app.db.session import Base
 
 
 class TaskStatus(str, Enum):

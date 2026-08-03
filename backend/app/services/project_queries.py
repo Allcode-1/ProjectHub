@@ -1,7 +1,7 @@
-from backend.app.repositories.project import ProjectRepository
-from backend.app.schemas.project import ProjectRead, ProjectRole
-from backend.app.cache.project import ProjectCache
-from backend.app.models.project import Project
+from app.repositories.project import ProjectRepository
+from app.schemas.project import ProjectRead, ProjectRole
+from app.cache.project import ProjectCache
+from app.models.project import Project
 
 
 def project_to_read(project: Project, current_user_role: ProjectRole) -> ProjectRead:

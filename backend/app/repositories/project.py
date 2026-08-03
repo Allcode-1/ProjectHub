@@ -1,9 +1,9 @@
 from sqlalchemy import String, and_, case, cast, or_, select
 from sqlalchemy.orm import Session
 
-from backend.app.models.user import User
-from backend.app.models.project import Project
-from backend.app.models.project_member import ProjectMember, ProjectInviteAccessLevel
+from app.models.user import User
+from app.models.project import Project
+from app.models.project_member import ProjectMember, ProjectInviteAccessLevel
 
 
 def _apply_pagination(statement, limit: int | None, offset: int):

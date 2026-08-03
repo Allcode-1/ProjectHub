@@ -3,11 +3,11 @@ from typing import Annotated
 from fastapi import Depends, Request
 from redis import Redis
 
-from backend.app.auth.dependencies import get_current_active_user
-from backend.app.core.config import settings
-from backend.app.models.user import User
-from backend.app.redis.client import get_redis
-from backend.app.security.rate_limiter import RateLimiter
+from app.auth.dependencies import get_current_active_user
+from app.core.config import settings
+from app.models.user import User
+from app.redis.client import get_redis
+from app.security.rate_limiter import RateLimiter
 
 RedisDep = Annotated[Redis, Depends(get_redis)]
 CurrentUser = Annotated[User, Depends(get_current_active_user)]

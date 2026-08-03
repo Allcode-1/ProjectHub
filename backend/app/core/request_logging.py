@@ -4,7 +4,7 @@ from uuid import uuid4
 
 from fastapi import FastAPI, Request
 
-from backend.app.core.logging import reset_request_id, set_request_id
+from app.core.logging import reset_request_id, set_request_id
 
 
 logger = logging.getLogger("app.http")

@@ -37,6 +37,10 @@ jobs:
     name: Backend Quality Gates
     runs-on: ubuntu-latest
 
+    defaults:
+      run:
+        working-directory: backend
+
     services:
       postgres:
         image: postgres:17-alpine
@@ -111,40 +115,40 @@ jobs:
 
       - name: Generate JWT key pair
         run: |
-          mkdir -p backend/certs
-          openssl genrsa -out backend/certs/private.pem 2048
-          openssl rsa -in backend/certs/private.pem -pubout -out backend/certs/public.pem
-          chmod 644 backend/certs/private.pem backend/certs/public.pem
+          mkdir -p certs
+          openssl genrsa -out certs/private.pem 2048
+          openssl rsa -in certs/private.pem -pubout -out certs/public.pem
+          chmod 644 certs/private.pem certs/public.pem
 
       - name: Install dependencies
-        run: uv sync --project backend --frozen --all-groups
+        run: uv sync --frozen --all-groups
 
       - name: Check lockfile
-        run: uv lock --project backend --check
+        run: uv lock --check
 
       - name: Run Ruff
-        run: uv run --project backend ruff check backend
+        run: uv run ruff check .
 
       - name: Run Mypy
-        run: uv run --project backend mypy backend/app backend/tests
+        run: uv run mypy app tests
 
       - name: Run Bandit
-        run: uv run --project backend bandit -q -r backend/app -ll
+        run: uv run bandit -q -r app -ll
 
       - name: Run dependency audit
-        run: uv run --project backend pip-audit
+        run: uv run pip-audit
 
       - name: Apply migrations
-        run: uv run --project backend alembic -c backend/alembic.ini upgrade head
+        run: uv run alembic upgrade head
 
       - name: Check migration sync
-        run: uv run --project backend alembic -c backend/alembic.ini check
+        run: uv run alembic check
 
       - name: Run tests
-        run: uv run --project backend pytest -q backend/tests
+        run: uv run pytest -q
 
       - name: Build Docker image
-        run: docker build -t project-hub:ci backend
+        run: docker build -t project-hub:ci .
 
   compose-smoke:
     name: Docker Compose Smoke

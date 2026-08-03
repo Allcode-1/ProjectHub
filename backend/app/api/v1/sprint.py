@@ -3,35 +3,35 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 
-from backend.app.db.session import get_db
-from backend.app.auth.dependencies import get_current_active_user
-from backend.app.models.user import User
-from backend.app.models.project import Project
-from backend.app.models.sprint import Sprint
+from app.db.session import get_db
+from app.auth.dependencies import get_current_active_user
+from app.models.user import User
+from app.models.project import Project
+from app.models.sprint import Sprint
 
-from backend.app.schemas.sprint import SprintCreate, SprintRead, SprintUpdate
+from app.schemas.sprint import SprintCreate, SprintRead, SprintUpdate
 
-from backend.app.services.sprint_actions import (
+from app.services.sprint_actions import (
     create_sprint,
     update_sprint,
     delete_sprint,
     start_sprint,
     close_sprint,
 )
-from backend.app.services.sprint_queries import SprintQueryService
+from app.services.sprint_queries import SprintQueryService
 
 
-from backend.app.dependencies.sprint import get_sprint_by_id_or_404
-from backend.app.dependencies.project import (
+from app.dependencies.sprint import get_sprint_by_id_or_404
+from app.dependencies.project import (
     require_can_manage_sprints,
     require_can_view_project,
 )
-from backend.app.dependencies.sprint_queries import get_sprint_query_service
-from backend.app.dependencies.pagination import Pagination, get_pagination
-from backend.app.dependencies.rate_limiter import rate_limit_authenticated_mutation
+from app.dependencies.sprint_queries import get_sprint_query_service
+from app.dependencies.pagination import Pagination, get_pagination
+from app.dependencies.rate_limiter import rate_limit_authenticated_mutation
 
-from backend.app.cache.sprint import SprintCache
-from backend.app.dependencies.cache import get_sprint_cache
+from app.cache.sprint import SprintCache
+from app.dependencies.cache import get_sprint_cache
 
 
 router = APIRouter()

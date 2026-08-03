@@ -4,24 +4,24 @@ from fastapi import APIRouter, Depends, status, Form, Request
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from backend.app.db.session import get_db
-from backend.app.auth import service as auth_service
+from app.db.session import get_db
+from app.auth import service as auth_service
 
-from backend.app.models.user import User
+from app.models.user import User
 
-from backend.app.auth.dependencies import get_current_active_user, require_admin
+from app.auth.dependencies import get_current_active_user, require_admin
 
-from backend.app.auth.schemas import UserCreate, UserRead, TokenPair, RefreshToken
+from app.auth.schemas import UserCreate, UserRead, TokenPair, RefreshToken
 
-from backend.app.security.rate_limiter import RateLimiter
-from backend.app.core.config import settings
-from backend.app.dependencies.rate_limiter import (
+from app.security.rate_limiter import RateLimiter
+from app.core.config import settings
+from app.dependencies.rate_limiter import (
     get_rate_limiter,
     rate_limit_auth_logout,
     rate_limit_auth_refresh,
     rate_limit_auth_register,
 )
-from backend.app.dependencies.pagination import Pagination, get_pagination
+from app.dependencies.pagination import Pagination, get_pagination
 
 
 router = APIRouter(prefix="/auth", tags=["jwt-based auth"])

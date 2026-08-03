@@ -3,19 +3,19 @@ from typing import Annotated
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
-from backend.app.auth.dependencies import get_current_active_user
-from backend.app.db.session import get_db
-from backend.app.dependencies.rate_limiter import rate_limit_authenticated_mutation
-from backend.app.dependencies.project import require_can_manage_sprints, require_can_take_tasks
-from backend.app.dependencies.sprint import get_sprint_by_id_or_404
-from backend.app.dependencies.task import get_task_by_id_or_404
-from backend.app.models.project import Project
-from backend.app.models.sprint import Sprint
-from backend.app.models.task import Task
-from backend.app.models.user import User
-from backend.app.schemas.review_comments import ReviewCommentCreate
-from backend.app.schemas.task import TaskRead
-from backend.app.services.task_actions import (
+from app.auth.dependencies import get_current_active_user
+from app.db.session import get_db
+from app.dependencies.rate_limiter import rate_limit_authenticated_mutation
+from app.dependencies.project import require_can_manage_sprints, require_can_take_tasks
+from app.dependencies.sprint import get_sprint_by_id_or_404
+from app.dependencies.task import get_task_by_id_or_404
+from app.models.project import Project
+from app.models.sprint import Sprint
+from app.models.task import Task
+from app.models.user import User
+from app.schemas.review_comments import ReviewCommentCreate
+from app.schemas.task import TaskRead
+from app.services.task_actions import (
     accept_task_review,
     decline_task_review,
     renew_task,

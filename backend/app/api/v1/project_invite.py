@@ -1,22 +1,22 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 
-from backend.app.core.errors import AppError
-from backend.app.db.session import get_db
-from backend.app.auth.dependencies import get_current_active_user
+from app.core.errors import AppError
+from app.db.session import get_db
+from app.auth.dependencies import get_current_active_user
 
-from backend.app.models.user import User
-from backend.app.models.project import Project
+from app.models.user import User
+from app.models.project import Project
 
-from backend.app.schemas.project_invite import (
+from app.schemas.project_invite import (
     ProjectInviteCreate,
     ProjectInviteRead,
     ProjectInviteUpdate,
 )
 
-from backend.app.services.project_invites import (
+from app.services.project_invites import (
     invite_to_project_by_id,
     update_invite,
     delete_invite,
@@ -24,14 +24,14 @@ from backend.app.services.project_invites import (
     decline_invite,
 )
 
-from backend.app.repositories.project_invite import ProjectInviteRepository
+from app.repositories.project_invite import ProjectInviteRepository
 
-from backend.app.dependencies.project import require_can_manage_sprints
-from backend.app.dependencies.project_invite import recipient_by_id_or_404
-from backend.app.dependencies.cache import get_project_cache
-from backend.app.dependencies.pagination import Pagination, get_pagination
-from backend.app.dependencies.rate_limiter import rate_limit_authenticated_mutation
-from backend.app.cache.project import ProjectCache
+from app.dependencies.project import require_can_manage_sprints
+from app.dependencies.project_invite import recipient_by_id_or_404
+from app.dependencies.cache import get_project_cache
+from app.dependencies.pagination import Pagination, get_pagination
+from app.dependencies.rate_limiter import rate_limit_authenticated_mutation
+from app.cache.project import ProjectCache
 
 
 router = APIRouter()

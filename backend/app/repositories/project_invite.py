@@ -1,8 +1,8 @@
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from backend.app.models.user import User
-from backend.app.models.project_invite import ProjectInvite, ProjectInviteStatus
+from app.models.user import User
+from app.models.project_invite import ProjectInvite, ProjectInviteStatus
 
 
 def _apply_pagination(statement, limit: int | None, offset: int):

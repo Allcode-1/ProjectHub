@@ -2,8 +2,8 @@ from collections.abc import Iterable, Sequence
 
 from pydantic import TypeAdapter, ValidationError
 
-from backend.app.schemas.project import ProjectRead
-from backend.app.cache.base import RedisCache
+from app.schemas.project import ProjectRead
+from app.cache.base import RedisCache
 
 
 _PROJECT_LIST_ADAPTER = TypeAdapter(list[ProjectRead])

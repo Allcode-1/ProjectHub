@@ -3,21 +3,21 @@ from datetime import datetime, timezone
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 
-from backend.app.core.errors import AppError
-from backend.app.models.user import User
-from backend.app.models.project import Project
-from backend.app.models.project_member import ProjectMember
-from backend.app.models.project_invite import (
+from app.core.errors import AppError
+from app.models.user import User
+from app.models.project import Project
+from app.models.project_member import ProjectMember
+from app.models.project_invite import (
     ProjectInvite,
     ProjectInviteStatus,
 )
 
-from backend.app.schemas.project_invite import ProjectInviteCreate, ProjectInviteUpdate
+from app.schemas.project_invite import ProjectInviteCreate, ProjectInviteUpdate
 
-from backend.app.repositories.project_invite import ProjectInviteRepository
+from app.repositories.project_invite import ProjectInviteRepository
 
-from backend.app.services.project_membership import can_view_project, get_project_access
-from backend.app.cache.project import ProjectCache
+from app.services.project_membership import can_view_project, get_project_access
+from app.cache.project import ProjectCache
 
 
 def invite_to_project_by_id(

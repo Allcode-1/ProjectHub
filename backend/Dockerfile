@@ -10,7 +10,7 @@ COPY pyproject.toml uv.lock README.md ./
 RUN pip install --no-cache-dir uv \
     && uv sync --frozen --no-dev --no-cache
 
-COPY app ./backend/app
+COPY app ./app
 COPY alembic ./alembic
 COPY alembic.ini ./alembic.ini
 
@@ -23,4 +23,4 @@ EXPOSE 8000
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health/live', timeout=2).read()"
 
-CMD [ "uvicorn", "backend.app.main:app", "--host", "0.0.0.0", "--port", "8000" ]
+CMD [ "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000" ]

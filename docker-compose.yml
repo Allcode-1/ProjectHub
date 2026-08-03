@@ -95,7 +95,7 @@ services:
       [
         "celery",
         "-A",
-        "backend.app.jobs.celery_app:celery_app",
+        "app.jobs.celery_app:celery_app",
         "worker",
         "--loglevel=INFO",
         "--pool=prefork",
@@ -125,7 +125,7 @@ services:
       [
         "celery",
         "-A",
-        "backend.app.jobs.celery_app:celery_app",
+        "app.jobs.celery_app:celery_app",
         "beat",
         "--loglevel=INFO",
         "--schedule=/tmp/celerybeat-schedule",

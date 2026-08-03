@@ -1,6 +1,6 @@
 from redis import Redis
 
-from backend.app.core.config import settings
+from app.core.config import settings
 
 
 redis_client = Redis.from_url(

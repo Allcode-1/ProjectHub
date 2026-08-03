@@ -2,7 +2,7 @@ from datetime import datetime
 
 from pydantic import BaseModel
 
-from backend.app.models.project_invite import ProjectInviteAccessLevel
+from app.models.project_invite import ProjectInviteAccessLevel
 
 
 class ProjectMemberCreate(BaseModel):

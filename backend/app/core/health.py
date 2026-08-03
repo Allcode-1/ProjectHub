@@ -5,9 +5,9 @@ from redis.exceptions import RedisError
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 
-from backend.app.core.config import settings
-from backend.app.db.session import SessionLocal
-from backend.app.redis.client import get_redis
+from app.core.config import settings
+from app.db.session import SessionLocal
+from app.redis.client import get_redis
 
 
 def liveness_payload() -> dict:

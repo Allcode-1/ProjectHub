@@ -2,18 +2,18 @@ from datetime import datetime, timedelta, timezone
 
 from sqlalchemy.orm import Session
 
-from backend.app.core.errors import AppError
-from backend.app.models.user import User
-from backend.app.models.project import Project
-from backend.app.models.sprint import Sprint, SprintStatus
+from app.core.errors import AppError
+from app.models.user import User
+from app.models.project import Project
+from app.models.sprint import Sprint, SprintStatus
 
-from backend.app.schemas.sprint import SprintCreate, SprintUpdate
+from app.schemas.sprint import SprintCreate, SprintUpdate
 
-from backend.app.repositories.sprint import SprintRepository
+from app.repositories.sprint import SprintRepository
 
-from backend.app.services.project_membership import can_manage_sprints
+from app.services.project_membership import can_manage_sprints
 
-from backend.app.cache.sprint import SprintCache
+from app.cache.sprint import SprintCache
 
 
 def _ensure_sprint_dates(starts_at: datetime | None, ends_at: datetime | None) -> None:

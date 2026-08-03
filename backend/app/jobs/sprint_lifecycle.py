@@ -5,12 +5,12 @@ from datetime import datetime, timezone
 from sqlalchemy import or_, update
 from sqlalchemy.orm import Session
 
-from backend.app.cache.base import RedisCache
-from backend.app.cache.sprint import SprintCache
-from backend.app.db.session import SessionLocal
-from backend.app.jobs.celery_app import celery_app
-from backend.app.models.sprint import Sprint, SprintStatus
-from backend.app.redis.client import get_redis
+from app.cache.base import RedisCache
+from app.cache.sprint import SprintCache
+from app.db.session import SessionLocal
+from app.jobs.celery_app import celery_app
+from app.models.sprint import Sprint, SprintStatus
+from app.redis.client import get_redis
 
 
 logger = logging.getLogger(__name__)

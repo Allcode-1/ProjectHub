@@ -1,4 +1,4 @@
-from backend.tests.helpers import (
+from tests.helpers import (
     auth_headers,
     create_project,
     invite_user,

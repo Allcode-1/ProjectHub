@@ -7,12 +7,12 @@ from datetime import datetime
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy import String, Enum as SAEnum, DateTime, func
 
-from backend.app.db.session import Base
+from app.db.session import Base
 
 if TYPE_CHECKING:
-    from backend.app.models.project import Project
-    from backend.app.models.project_member import ProjectMember
-    from backend.app.models.project_invite import ProjectInvite
+    from app.models.project import Project
+    from app.models.project_member import ProjectMember
+    from app.models.project_invite import ProjectInvite
 
 
 class UserRole(str, Enum):

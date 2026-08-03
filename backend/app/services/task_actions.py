@@ -1,19 +1,19 @@
 from sqlalchemy.orm import Session
 
-from backend.app.core.errors import AppError
-from backend.app.models.task import Task, TaskStatus
-from backend.app.models.user import User
-from backend.app.models.project import Project
-from backend.app.models.sprint import Sprint, SprintStatus
+from app.core.errors import AppError
+from app.models.task import Task, TaskStatus
+from app.models.user import User
+from app.models.project import Project
+from app.models.sprint import Sprint, SprintStatus
 
-from backend.app.schemas.task import TaskUpdate, TaskCreate
-from backend.app.schemas.review_comments import ReviewCommentCreate
+from app.schemas.task import TaskUpdate, TaskCreate
+from app.schemas.review_comments import ReviewCommentCreate
 
-from backend.app.repositories.task import TaskRepository
-from backend.app.repositories.project import ProjectRepository
-from backend.app.repositories.review_comment import ReviewCommentRepository
+from app.repositories.task import TaskRepository
+from app.repositories.project import ProjectRepository
+from app.repositories.review_comment import ReviewCommentRepository
 
-from backend.app.services.project_membership import can_manage_sprints
+from app.services.project_membership import can_manage_sprints
 
 
 def _ensure_sprint_open(sprint: Sprint) -> None:

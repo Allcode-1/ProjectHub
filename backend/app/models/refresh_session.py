@@ -3,7 +3,7 @@ from sqlalchemy import String, ForeignKey, DateTime, Index
 
 from datetime import datetime
 
-from backend.app.db.session import Base
+from app.db.session import Base
 
 
 class RefreshSession(Base):

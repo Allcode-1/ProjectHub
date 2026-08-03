@@ -6,14 +6,14 @@ from sqlalchemy import create_engine
 from sqlalchemy.engine import make_url
 from sqlalchemy.orm import Session
 
-from backend.app.cache.base import RedisCache
-from backend.app.db.session import Base, get_db
-from backend.app.dependencies.cache import get_cache
-from backend.app.dependencies.rate_limiter import get_rate_limiter
-from backend.app.main import app as fastapi_app
-from backend.app.security.rate_limiter import RateLimiter
-import backend.app.models  # noqa: F401
-from backend.tests.fakes import InMemoryRedis
+from app.cache.base import RedisCache
+from app.db.session import Base, get_db
+from app.dependencies.cache import get_cache
+from app.dependencies.rate_limiter import get_rate_limiter
+from app.main import app as fastapi_app
+from app.security.rate_limiter import RateLimiter
+import app.models  # noqa: F401
+from tests.fakes import InMemoryRedis
 
 
 DATABASE_URL = os.getenv("DATABASE_URL")

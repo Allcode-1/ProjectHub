@@ -1,8 +1,8 @@
 from datetime import datetime, timedelta, timezone
 
-from backend.app.auth import utils as auth_utils
-from backend.app.core.config import settings
-from backend.app.models.user import User
+from app.auth import utils as auth_utils
+from app.core.config import settings
+from app.models.user import User
 
 from uuid import uuid4
 

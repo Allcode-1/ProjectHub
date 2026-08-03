@@ -1,6 +1,6 @@
 from datetime import datetime
 from pydantic import BaseModel, ConfigDict, Field
-from backend.app.models.task import TaskStatus
+from app.models.task import TaskStatus
 
 
 class TaskCreate(BaseModel):

@@ -1,7 +1,7 @@
 from sqlalchemy import or_, select, update
 from sqlalchemy.orm import Session
 
-from backend.app.models.task import Task, TaskStatus
+from app.models.task import Task, TaskStatus
 
 
 def _apply_pagination(statement, limit: int | None, offset: int):

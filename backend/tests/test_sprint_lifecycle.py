@@ -2,11 +2,11 @@ from datetime import datetime, timedelta, timezone
 
 from sqlalchemy.orm import Session
 
-from backend.app.jobs.celery_app import celery_app
-from backend.app.jobs.sprint_lifecycle import synchronize_sprint_lifecycle
-from backend.app.models.project import Project
-from backend.app.models.sprint import Sprint, SprintStatus
-from backend.app.models.user import User
+from app.jobs.celery_app import celery_app
+from app.jobs.sprint_lifecycle import synchronize_sprint_lifecycle
+from app.models.project import Project
+from app.models.sprint import Sprint, SprintStatus
+from app.models.user import User
 
 
 def _get_sprint(db: Session, sprint_id: int) -> Sprint:

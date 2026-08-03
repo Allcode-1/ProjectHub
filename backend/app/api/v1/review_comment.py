@@ -1,22 +1,22 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
-from backend.app.core.errors import AppError
-from backend.app.auth.dependencies import get_current_active_user
-from backend.app.db.session import get_db
-from backend.app.dependencies.pagination import Pagination, get_pagination
-from backend.app.dependencies.project import require_can_take_tasks
-from backend.app.dependencies.sprint import get_sprint_by_id_or_404
-from backend.app.models.project import Project
-from backend.app.models.sprint import Sprint
-from backend.app.models.task import TaskStatus
-from backend.app.models.user import User
-from backend.app.repositories.review_comment import ReviewCommentRepository
-from backend.app.repositories.task import TaskRepository
-from backend.app.schemas.review_comments import ReviewCommentRead
-from backend.app.services.review_comments import get_my_review_comments
+from app.core.errors import AppError
+from app.auth.dependencies import get_current_active_user
+from app.db.session import get_db
+from app.dependencies.pagination import Pagination, get_pagination
+from app.dependencies.project import require_can_take_tasks
+from app.dependencies.sprint import get_sprint_by_id_or_404
+from app.models.project import Project
+from app.models.sprint import Sprint
+from app.models.task import TaskStatus
+from app.models.user import User
+from app.repositories.review_comment import ReviewCommentRepository
+from app.repositories.task import TaskRepository
+from app.schemas.review_comments import ReviewCommentRead
+from app.services.review_comments import get_my_review_comments
 
 
 router = APIRouter()

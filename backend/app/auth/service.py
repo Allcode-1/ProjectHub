@@ -5,12 +5,12 @@ from sqlalchemy import select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from backend.app.auth import utils as auth_utils
-from backend.app.auth.schemas import TokenPair, UserCreate
-from backend.app.auth.tokens import create_access_token, create_refresh_token
-from backend.app.core.errors import AppError
-from backend.app.models.refresh_session import RefreshSession
-from backend.app.models.user import User
+from app.auth import utils as auth_utils
+from app.auth.schemas import TokenPair, UserCreate
+from app.auth.tokens import create_access_token, create_refresh_token
+from app.core.errors import AppError
+from app.models.refresh_session import RefreshSession
+from app.models.user import User
 
 
 def _invalid_token_error() -> AppError:

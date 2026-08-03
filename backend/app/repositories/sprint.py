@@ -3,7 +3,7 @@ from datetime import datetime
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from backend.app.models.sprint import Sprint
+from app.models.sprint import Sprint
 
 
 def _apply_pagination(statement, limit: int | None, offset: int):

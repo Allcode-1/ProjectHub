@@ -6,11 +6,11 @@ from enum import Enum
 from sqlalchemy import ForeignKey, Enum as SAEnum, Index
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from backend.app.db.session import Base
+from app.db.session import Base
 
 if TYPE_CHECKING:
-    from backend.app.models.user import User
-    from backend.app.models.project import Project
+    from app.models.user import User
+    from app.models.project import Project
 
 
 class ProjectInviteAccessLevel(str, Enum):

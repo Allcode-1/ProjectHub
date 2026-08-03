@@ -2,11 +2,11 @@ from typing import Annotated
 
 from fastapi import Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from backend.app.db.session import get_db
+from app.db.session import get_db
 
-from backend.app.dependencies.project import get_project_by_id_or_404
-from backend.app.repositories.sprint import SprintRepository
-from backend.app.models.project import Project
+from app.dependencies.project import get_project_by_id_or_404
+from app.repositories.sprint import SprintRepository
+from app.models.project import Project
 
 DbSession = Annotated[Session, Depends(get_db)]
 ProjectById = Annotated[Project, Depends(get_project_by_id_or_404)]

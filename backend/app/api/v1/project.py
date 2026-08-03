@@ -3,32 +3,32 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 
-from backend.app.db.session import get_db
-from backend.app.auth.dependencies import get_current_active_user
+from app.db.session import get_db
+from app.auth.dependencies import get_current_active_user
 
-from backend.app.models.user import User
-from backend.app.models.project import Project
+from app.models.user import User
+from app.models.project import Project
 
-from backend.app.schemas.project import ProjectCreate, ProjectRead, ProjectRole, ProjectUpdate
-from backend.app.auth.schemas import UserRead
+from app.schemas.project import ProjectCreate, ProjectRead, ProjectRole, ProjectUpdate
+from app.auth.schemas import UserRead
 
-from backend.app.services.project_actions import create_project, update_project, delete_project
-from backend.app.services.project_members import leave_project
-from backend.app.services.project_queries import ProjectQueryService, project_to_read
-from backend.app.services.project_membership import get_project_role
+from app.services.project_actions import create_project, update_project, delete_project
+from app.services.project_members import leave_project
+from app.services.project_queries import ProjectQueryService, project_to_read
+from app.services.project_membership import get_project_role
 
-from backend.app.repositories.project import ProjectRepository
+from app.repositories.project import ProjectRepository
 
-from backend.app.dependencies.project import (
+from app.dependencies.project import (
     require_can_manage_sprints,
     require_can_view_project,
 )
-from backend.app.dependencies.project_queries import get_project_query_service
-from backend.app.dependencies.pagination import Pagination, get_pagination
-from backend.app.dependencies.rate_limiter import rate_limit_authenticated_mutation
+from app.dependencies.project_queries import get_project_query_service
+from app.dependencies.pagination import Pagination, get_pagination
+from app.dependencies.rate_limiter import rate_limit_authenticated_mutation
 
-from backend.app.cache.project import ProjectCache
-from backend.app.dependencies.cache import get_project_cache
+from app.cache.project import ProjectCache
+from app.dependencies.cache import get_project_cache
 
 router = APIRouter()
 

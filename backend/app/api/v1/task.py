@@ -3,29 +3,29 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 
-from backend.app.auth.dependencies import get_current_active_user
-from backend.app.db.session import get_db
+from app.auth.dependencies import get_current_active_user
+from app.db.session import get_db
 
-from backend.app.models.user import User
-from backend.app.models.task import Task
-from backend.app.models.project import Project
-from backend.app.models.sprint import Sprint
+from app.models.user import User
+from app.models.task import Task
+from app.models.project import Project
+from app.models.sprint import Sprint
 
-from backend.app.schemas.task import TaskCreate, TaskRead, TaskUpdate
+from app.schemas.task import TaskCreate, TaskRead, TaskUpdate
 
-from backend.app.services.task_actions import add_task, update_task, delete_task
+from app.services.task_actions import add_task, update_task, delete_task
 
-from backend.app.repositories.task import TaskRepository
+from app.repositories.task import TaskRepository
 
-from backend.app.dependencies.project import (
+from app.dependencies.project import (
     require_can_manage_sprints,
     require_can_take_tasks,
     require_can_view_project,
 )
-from backend.app.dependencies.sprint import get_sprint_by_id_or_404
-from backend.app.dependencies.task import get_task_by_id_or_404
-from backend.app.dependencies.pagination import Pagination, get_pagination
-from backend.app.dependencies.rate_limiter import rate_limit_authenticated_mutation
+from app.dependencies.sprint import get_sprint_by_id_or_404
+from app.dependencies.task import get_task_by_id_or_404
+from app.dependencies.pagination import Pagination, get_pagination
+from app.dependencies.rate_limiter import rate_limit_authenticated_mutation
 
 
 router = APIRouter()

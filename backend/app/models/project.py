@@ -6,12 +6,12 @@ from datetime import datetime
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy import CheckConstraint, ForeignKey, DateTime, Index, String, func
 
-from backend.app.db.session import Base
+from app.db.session import Base
 
 if TYPE_CHECKING:
-    from backend.app.models.user import User
-    from backend.app.models.project_member import ProjectMember
-    from backend.app.models.project_invite import ProjectInvite
+    from app.models.user import User
+    from app.models.project_member import ProjectMember
+    from app.models.project_invite import ProjectInvite
 
 
 class Project(Base):

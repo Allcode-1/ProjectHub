@@ -1,6 +1,6 @@
 import time
 
-from backend.app.jobs.celery_app import celery_app
+from app.jobs.celery_app import celery_app
 
 
 @celery_app.task(name="project_hub.demo.add")

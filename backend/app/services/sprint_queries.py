@@ -1,6 +1,6 @@
-from backend.app.repositories.sprint import SprintRepository
-from backend.app.schemas.sprint import SprintRead
-from backend.app.cache.sprint import SprintCache
+from app.repositories.sprint import SprintRepository
+from app.schemas.sprint import SprintRead
+from app.cache.sprint import SprintCache
 
 
 class SprintQueryService:

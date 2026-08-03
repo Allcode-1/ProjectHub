@@ -6,14 +6,8 @@ from pydantic import BaseModel
 
 BASE_DIR = Path(__file__).parent.parent.parent
 
-load_dotenv(BASE_DIR / ".env")
-
-
-class AllowedOriginsCors(BaseModel):
-    credentials: list = [
-        "http://localhost:3000",
-        "http://localhost"
-    ]
+load_dotenv(BASE_DIR.parent / ".env")
+load_dotenv(BASE_DIR / ".env", override=True)
 
 
 class Auth_JWT(BaseModel):
@@ -59,7 +53,7 @@ class RateLimitSettings(BaseModel):
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=(BASE_DIR.parent / ".env", BASE_DIR / ".env"),
         env_nested_delimiter="__",
         extra="ignore",
     )
@@ -70,7 +64,12 @@ class Settings(BaseSettings):
     readiness_require_redis: bool = True
     readiness_require_rabbitmq: bool = False
 
-    allowed_origins: AllowedOriginsCors = AllowedOriginsCors()
+    allowed_origins: list[str] = [
+        "http://localhost:3000",
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "http://localhost",
+    ]
     auth_jwt: Auth_JWT = Auth_JWT()
     database: DatabaseSettings = DatabaseSettings()
     pagination: PaginationSettings = PaginationSettings()

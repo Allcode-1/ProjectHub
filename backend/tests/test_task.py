@@ -2,14 +2,14 @@ from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import select
 
-from backend.app.models.project import Project
-from backend.app.models.review_comment import ReviewComment
-from backend.app.models.sprint import Sprint
-from backend.app.models.task import Task
-from backend.app.models.user import User
-from backend.app.repositories.task import TaskRepository
+from app.models.project import Project
+from app.models.review_comment import ReviewComment
+from app.models.sprint import Sprint
+from app.models.task import Task
+from app.models.user import User
+from app.repositories.task import TaskRepository
 
-from backend.tests.helpers import (
+from tests.helpers import (
     auth_headers,
     create_project,
     create_sprint,

@@ -3,7 +3,7 @@ from datetime import datetime
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy import String, ForeignKey, DateTime, func
 
-from backend.app.db.session import Base
+from app.db.session import Base
 
 
 class ReviewComment(Base):

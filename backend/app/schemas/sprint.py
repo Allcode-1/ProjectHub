@@ -1,7 +1,7 @@
 from datetime import datetime
 
 from pydantic import BaseModel, Field
-from backend.app.models.sprint import SprintStatus
+from app.models.sprint import SprintStatus
 
 
 class SprintCreate(BaseModel):

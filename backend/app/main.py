@@ -1,13 +1,13 @@
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
-from backend.app.auth.routes import router as auth_router
-from backend.app.api.v1.router import v1_router
-from backend.app.core.config import settings
-from backend.app.core.exception_handlers import register_exception_handlers
-from backend.app.core.health import liveness_payload, readiness_payload
-from backend.app.core.logging import configure_logging
-from backend.app.core.request_logging import register_request_logging
+from app.auth.routes import router as auth_router
+from app.api.v1.router import v1_router
+from app.core.config import settings
+from app.core.exception_handlers import register_exception_handlers
+from app.core.health import liveness_payload, readiness_payload
+from app.core.logging import configure_logging
+from app.core.request_logging import register_request_logging
 
 
 configure_logging()

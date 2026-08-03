@@ -6,13 +6,13 @@ from datetime import datetime
 from sqlalchemy import ForeignKey, DateTime, UniqueConstraint, Enum as SAEnum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from backend.app.db.session import Base
+from app.db.session import Base
 
-from backend.app.models.project_invite import ProjectInviteAccessLevel
+from app.models.project_invite import ProjectInviteAccessLevel
 
 if TYPE_CHECKING:
-    from backend.app.models.user import User
-    from backend.app.models.project import Project
+    from app.models.user import User
+    from app.models.project import Project
 
 
 class ProjectMember(Base):

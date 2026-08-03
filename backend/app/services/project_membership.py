@@ -1,10 +1,10 @@
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from backend.app.models.project import Project
-from backend.app.models.project_member import ProjectMember, ProjectInviteAccessLevel
-from backend.app.models.user import User
-from backend.app.schemas.project import ProjectRole
+from app.models.project import Project
+from app.models.project_member import ProjectMember, ProjectInviteAccessLevel
+from app.models.user import User
+from app.schemas.project import ProjectRole
 
 
 def get_project_access(

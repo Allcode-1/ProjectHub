@@ -1,5 +1,5 @@
 from pydantic import BaseModel, ConfigDict
-from backend.app.models.project_invite import ProjectInviteStatus, ProjectInviteAccessLevel
+from app.models.project_invite import ProjectInviteStatus, ProjectInviteAccessLevel
 
 
 class ProjectInviteCreate(BaseModel):

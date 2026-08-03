@@ -3,13 +3,13 @@ from typing import Annotated
 from fastapi import Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from backend.app.auth.dependencies import get_current_active_user
-from backend.app.db.session import get_db
-from backend.app.models.project import Project
-from backend.app.models.user import User
+from app.auth.dependencies import get_current_active_user
+from app.db.session import get_db
+from app.models.project import Project
+from app.models.user import User
 
-from backend.app.repositories.project import ProjectRepository
-from backend.app.services.project_membership import (
+from app.repositories.project import ProjectRepository
+from app.services.project_membership import (
     can_take_tasks,
     can_manage_sprints,
     can_view_project,

@@ -3,8 +3,8 @@ from celery.signals import task_failure, task_postrun, task_prerun
 import logging
 from typing import Any
 
-from backend.app.core.config import settings
-from backend.app.core.logging import configure_logging
+from app.core.config import settings
+from app.core.logging import configure_logging
 
 
 configure_logging()

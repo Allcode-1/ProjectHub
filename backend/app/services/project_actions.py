@@ -1,14 +1,14 @@
 from sqlalchemy.orm import Session
 
-from backend.app.core.errors import AppError
-from backend.app.models.user import User
-from backend.app.models.project import Project
+from app.core.errors import AppError
+from app.models.user import User
+from app.models.project import Project
 
-from backend.app.schemas.project import ProjectCreate, ProjectUpdate
+from app.schemas.project import ProjectCreate, ProjectUpdate
 
-from backend.app.repositories.project import ProjectRepository
+from app.repositories.project import ProjectRepository
 
-from backend.app.cache.project import ProjectCache
+from app.cache.project import ProjectCache
 
 
 def _project_cache_user_ids(
